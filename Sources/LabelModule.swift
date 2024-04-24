@@ -15,7 +15,7 @@ enum FrameworksLabelCaptureError: Error {
     case invalidBrush(String)
 }
 
-open class LabelModule: NSObject, FrameworkModule {
+public class LabelModule: NSObject, FrameworkModule {
     private let deserializer: LabelCaptureDeserializer
     private let emitter: Emitter
     private let listener: FrameworksLabelCaptureListener
