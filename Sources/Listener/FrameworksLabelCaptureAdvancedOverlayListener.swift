@@ -7,7 +7,7 @@
 import ScanditFrameworksCore
 import ScanditLabelCapture
 
-open class FrameworksLabelCaptureAdvancedOverlayListener: NSObject, LabelCaptureAdvancedOverlayDelegate {
+public class FrameworksLabelCaptureAdvancedOverlayListener: NSObject, LabelCaptureAdvancedOverlayDelegate {
     private let emitter: Emitter
 
     public init(emitter: Emitter) {
@@ -23,14 +23,14 @@ open class FrameworksLabelCaptureAdvancedOverlayListener: NSObject, LabelCapture
 
     private var isEnabled = AtomicBool()
 
-    public func enable() {
+    func enable() {
         if isEnabled.value {
             return
         }
         isEnabled.value = true
     }
 
-    public func disable() {
+    func disable() {
         guard isEnabled.value else { return }
         isEnabled.value = false
     }
