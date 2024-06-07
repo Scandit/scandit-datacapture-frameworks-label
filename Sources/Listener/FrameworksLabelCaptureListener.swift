@@ -34,7 +34,7 @@ extension Emitter {
     }
 }
 
-public class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
+open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
     private let emitter: Emitter
 
     public init(emitter: Emitter) {
@@ -63,21 +63,21 @@ public class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
         didUpdateEvent.unlock(value: enabled)
     }
 
-    func enable() {
+    public func enable() {
         if isEnabled.value {
             return
         }
         isEnabled.value = true
     }
 
-    func disable() {
+    public func disable() {
         if isEnabled.value {
             isEnabled.value = false
             didUpdateEvent.reset()
         }
     }
 
-    func label(with id: Int) throws -> CapturedLabel {
+    public func label(with id: Int) throws -> CapturedLabel {
         guard let session = sessionHolder.value else {
             throw FrameworksLabelCaptureError.noSession
         }
@@ -87,7 +87,7 @@ public class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
         throw FrameworksLabelCaptureError.noSuchLabel(id)
     }
 
-    func labelAndField(with id: Int, and fieldName: String) throws -> (CapturedLabel, LabelField) {
+    public func labelAndField(with id: Int, and fieldName: String) throws -> (CapturedLabel, LabelField) {
         let label = try label(with: id)
         guard let field = label.fields.first(where: { $0.name == fieldName }) else {
             throw FrameworksLabelCaptureError.noSuchField(id, fieldName)

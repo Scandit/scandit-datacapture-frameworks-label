@@ -7,7 +7,7 @@
 import ScanditFrameworksCore
 import ScanditLabelCapture
 
-public class FrameworksLabelCaptureBasicOverlayListener: NSObject, LabelCaptureBasicOverlayDelegate {
+open class FrameworksLabelCaptureBasicOverlayListener: NSObject, LabelCaptureBasicOverlayDelegate {
     private let emitter: Emitter
 
     private let brushForFieldOfLabelEvent = Event(.brushForFieldOfLabel)
@@ -45,12 +45,12 @@ public class FrameworksLabelCaptureBasicOverlayListener: NSObject, LabelCaptureB
         didTapLabelEvent.emit(on: emitter, payload: ["label": label.jsonString])
     }
 
-    func enable() {
+    public func enable() {
         if isEnabled.value { return }
         isEnabled.value = true
     }
 
-    func disable() {
+    public func disable() {
         guard isEnabled.value else { return }
         isEnabled.value = false
     }
