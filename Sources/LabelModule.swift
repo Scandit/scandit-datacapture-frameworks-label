@@ -38,23 +38,7 @@ open class LabelModule: NSObject, FrameworkModule {
             labelCapture?.addListener(listener)
         }
     }
-    private var basicOverlay: LabelCaptureBasicOverlay? {
-        willSet {
-            basicOverlay?.delegate = nil
-        }
-        didSet {
-            basicOverlay?.delegate = basicOverlayListener
-        }
-    }
-    private var advancedOverlay: LabelCaptureAdvancedOverlay? {
-        willSet {
-            advancedOverlay?.delegate = nil
-        }
-        didSet {
-            advancedOverlay?.delegate = advancedOverlayListener
-        }
-    }
-    
+
     public init(emitter: Emitter,
                 listener: FrameworksLabelCaptureListener,
                 basicOverlayListener: FrameworksLabelCaptureBasicOverlayListener,
@@ -139,7 +123,9 @@ open class LabelModule: NSObject, FrameworkModule {
                 result.reject(error: FrameworksLabelCaptureError.invalidBrush(brushJson))
                 return
             }
-            basicOverlay?.setBrush(brush, for: label)
+            if let overlay: LabelCaptureBasicOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+                overlay.setBrush(brush, for: label)
+            }
         } catch {
             result.reject(error: error)
             return
@@ -164,7 +150,9 @@ open class LabelModule: NSObject, FrameworkModule {
                 result.reject(error: FrameworksLabelCaptureError.invalidBrush(brushJson))
                 return
             }
-            basicOverlay?.setBrush(brush, for: field, of: label)
+            if let overlay: LabelCaptureBasicOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+                overlay.setBrush(brush, for: field, of: label)
+            }
         } catch {
             result.reject(error: error)
             return
@@ -183,8 +171,10 @@ open class LabelModule: NSObject, FrameworkModule {
                     payload: ["label": label.jsonString]
                 )
             }
-            dispatchMainSync {
-                advancedOverlay?.setView(viewForLabel.view, for: label)
+            if let overlay: LabelCaptureAdvancedOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+                dispatchMainSync {
+                    overlay.setView(viewForLabel.view, for: label)
+                }
             }
         } catch {
             result?.reject(error: error)
@@ -196,8 +186,10 @@ open class LabelModule: NSObject, FrameworkModule {
     public func setAnchorForCapturedLabel(anchorForLabel: AnchorForLabel, result: FrameworksResult) {
         do {
             let label = try listener.label(with: anchorForLabel.trackingId)
-            dispatchMainSync {
-                advancedOverlay?.setAnchor(anchorForLabel.anchor, for: label)
+            if let overlay: LabelCaptureAdvancedOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+                dispatchMainSync {
+                    overlay.setAnchor(anchorForLabel.anchor, for: label)
+                }
             }
         } catch {
             result.reject(error: error)
@@ -209,8 +201,10 @@ open class LabelModule: NSObject, FrameworkModule {
     public func setOffsetForCapturedLabel(offsetForLabel: OffsetForLabel, result: FrameworksResult) {
         do {
             let label = try listener.label(with: offsetForLabel.trackingId)
-            dispatchMainSync {
-                advancedOverlay?.setOffset(offsetForLabel.offset, for: label)
+            if let overlay: LabelCaptureAdvancedOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+                dispatchMainSync {
+                    overlay.setOffset(offsetForLabel.offset, for: label)
+                }
             }
         } catch {
             result.reject(error: error)
@@ -238,8 +232,10 @@ open class LabelModule: NSObject, FrameworkModule {
                     ]
                 )
             }
-            dispatchMainSync {
-                advancedOverlay?.setView(view, for: field, of: label)
+            if let overlay: LabelCaptureAdvancedOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+                dispatchMainSync {
+                    overlay.setView(view, for: field, of: label)
+                }
             }
         } catch {
             result?.reject(error: error)
@@ -256,8 +252,10 @@ open class LabelModule: NSObject, FrameworkModule {
         do {
             let (label, field) = try listener.labelAndField(with: anchorForFieldOfLabel.trackingId,
                                                             and: fieldName)
-            dispatchMainSync {
-                advancedOverlay?.setAnchor(anchorForFieldOfLabel.anchor, for: field, of: label)
+            if let overlay: LabelCaptureAdvancedOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+                dispatchMainSync {
+                    overlay.setAnchor(anchorForFieldOfLabel.anchor, for: field, of: label)
+                }
             }
         } catch {
             result.reject(error: error)
@@ -274,8 +272,10 @@ open class LabelModule: NSObject, FrameworkModule {
         do {
             let (label, field) = try listener.labelAndField(with: offsetForFieldOfLabel.trackingId,
                                                             and: fieldName)
-            dispatchMainSync {
-                advancedOverlay?.setOffset(offsetForFieldOfLabel.offset, for: field, of: label)
+            if let overlay: LabelCaptureAdvancedOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+                dispatchMainSync {
+                    overlay.setOffset(offsetForFieldOfLabel.offset, for: field, of: label)
+                }
             }
         } catch {
             result.reject(error: error)
@@ -285,8 +285,10 @@ open class LabelModule: NSObject, FrameworkModule {
     }
 
     public func clearTrackedCapturedLabelViews() {
-        dispatchMainSync {
-            advancedOverlay?.clearTrackedCapturedLabelViews()
+        if let overlay: LabelCaptureAdvancedOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+            dispatchMainSync {
+                overlay.clearTrackedCapturedLabelViews()
+            }
         }
     }
 
@@ -319,8 +321,12 @@ open class LabelModule: NSObject, FrameworkModule {
     
     public func updateBasicOverlay(overlayJson: String, result: FrameworksResult) {
         do {
-            removeCurrentBasicaOverlay()
-            try dataCaptureView(addOverlay: overlayJson)
+            if let view = DataCaptureViewHandler.shared.topmostDataCaptureView {
+                if let overlay: LabelCaptureBasicOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+                    DataCaptureViewHandler.shared.removeOverlayFromView(view, overlay: overlay)
+                }
+                try dataCaptureView(addOverlay: overlayJson, to: view)
+            }
             result.success(result: nil)
         } catch {
             result.reject(error: error)
@@ -329,8 +335,12 @@ open class LabelModule: NSObject, FrameworkModule {
     
     public func updateAdvancedOverlay(overlayJson: String, result: FrameworksResult) {
         do {
-            removeCurrentAdvancedOverlay()
-            try dataCaptureContext(addMode: overlayJson)
+            if let view = DataCaptureViewHandler.shared.topmostDataCaptureView {
+                if let overlay: LabelCaptureAdvancedOverlay = DataCaptureViewHandler.shared.findFirstOverlayOfType() {
+                    DataCaptureViewHandler.shared.removeOverlayFromView(view, overlay: overlay)
+                }
+                try dataCaptureView(addOverlay: overlayJson, to: view)
+            }
             result.success(result: nil)
         } catch {
             result.reject(error: error)
@@ -339,16 +349,6 @@ open class LabelModule: NSObject, FrameworkModule {
     
     func onModeRemovedFromContext() {
         labelCapture = nil
-        
-        if let basicOverlay = basicOverlay, let dataCaptureView = dataCaptureView {
-            dataCaptureView.removeOverlay(basicOverlay)
-        }
-        basicOverlay = nil
-        
-        if let advancedOverlay = self.advancedOverlay, let dataCaptureView = self.dataCaptureView {
-            dataCaptureView.removeOverlay(advancedOverlay)
-        }
-        self.advancedOverlay = nil
     }
 }
 
@@ -380,7 +380,6 @@ extension LabelModule: LabelCaptureDeserializerDelegate {
     public func labelCaptureDeserializer(_ deserializer: LabelCaptureDeserializer,
                                          didFinishDeserializingBasicOverlay overlay: LabelCaptureBasicOverlay,
                                          from JSONValue: JSONValue) {
-        basicOverlay = overlay
     }
     
     public func labelCaptureDeserializer(_ deserializer: LabelCaptureDeserializer,
@@ -390,17 +389,12 @@ extension LabelModule: LabelCaptureDeserializerDelegate {
     public func labelCaptureDeserializer(_ deserializer: LabelCaptureDeserializer, 
                                          didFinishDeserializingAdvancedOverlay overlay: LabelCaptureAdvancedOverlay,
                                          from JSONValue: JSONValue) {
-        advancedOverlay = overlay
     }
 }
 
 extension LabelModule: DeserializationLifeCycleObserver {
     public func dataCaptureContext(deserialized context: DataCaptureContext?) {
         self.context = context
-    }
-    
-    public func dataCaptureView(deserialized view: DataCaptureView?) {
-        dataCaptureView = view
     }
     
     public func dataCaptureContext(addMode modeJson: String) throws {
@@ -444,7 +438,7 @@ extension LabelModule: DeserializationLifeCycleObserver {
         onModeRemovedFromContext()
     }
     
-    public func dataCaptureView(addOverlay overlayJson: String) throws {
+    public func dataCaptureView(addOverlay overlayJson: String, to view: DataCaptureView) throws {
         let overlayType = JSONValue(string: overlayJson).string(forKey: "type")
         if overlayType != "labelCaptureBasic" && overlayType != "labelCaptureAdvanced" {
             return
@@ -459,46 +453,10 @@ extension LabelModule: DeserializationLifeCycleObserver {
             try deserializer.basicOverlay(fromJSONString: overlayJson, withMode: mode) :
             try deserializer.advancedOverlay(fromJSONString: overlayJson, withMode: mode)
             
-            dataCaptureView?.addOverlay(overlay)
+            (overlay as? LabelCaptureBasicOverlay)?.delegate = basicOverlayListener
+            (overlay as? LabelCaptureAdvancedOverlay)?.delegate = advancedOverlayListener
+            
+            DataCaptureViewHandler.shared.addOverlayToView(view, overlay: overlay)
         }
-    }
-    
-    public func dataCaptureView(removeOverlay overlayJson: String) {
-        let overlayType = JSONValue(string: overlayJson).string(forKey: "type")
-        if overlayType != "labelCaptureBasic" && overlayType != "labelCaptureAdvanced" {
-            return
-        }
-        
-       if overlayType == "labelCaptureBasic" {
-            removeCurrentBasicaOverlay()
-        } else {
-             removeCurrentAdvancedOverlay()
-        }
-    }
-    
-    public func dataCaptureViewRemoveAllOverlays() {
-        removeCurrentBasicaOverlay()
-        removeCurrentAdvancedOverlay()
-    }
-    
-    private func removeCurrentBasicaOverlay() {
-        guard let overlay = basicOverlay else {
-            return
-        }
-        
-        dispatchMainSync {
-            dataCaptureView?.removeOverlay(overlay)
-        }
-        basicOverlay = nil
-    }
-    
-    private func removeCurrentAdvancedOverlay() {
-        guard let overlay = advancedOverlay else {
-            return
-        }
-        dispatchMainSync {
-            dataCaptureView?.removeOverlay(overlay)
-        }
-        advancedOverlay = nil
     }
 }
