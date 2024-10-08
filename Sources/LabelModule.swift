@@ -25,7 +25,7 @@ open class LabelModule: NSObject, FrameworkModule {
     private let didTapViewForLabelEvent = Event(.didTapOnViewForLabel)
     private let didTapViewForFieldOfLabelEvent = Event(.didTapOnViewForFieldOfLabel)
 
-    private var modeEnabled = AtomicBool()
+    private var modeEnabled = AtomicBool(true)
 
     private var context: DataCaptureContext?
     private var dataCaptureView: DataCaptureView?
