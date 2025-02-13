@@ -51,14 +51,11 @@ open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
                              didUpdate session: LabelCaptureSession,
                              frameData: FrameData) {
         guard isEnabled.value, emitter.hasListener(for: .didUpdateSession) else { return }
-        
-        let frameId = LastFrameData.shared.addToCache(frameData: frameData)
-        defer { LastFrameData.shared.removeFromCache(frameId: frameId) }
-        
+        LastFrameData.shared.frameData = frameData
+        defer { LastFrameData.shared.frameData = nil }
         sessionHolder.value = session
         let result = didUpdateEvent.emit(on: emitter,
-                                         payload: ["session": session.jsonString,
-                                                   "frameId": frameId]) ?? true
+                                         payload: ["session": session.jsonString]) ?? true
         labelCapture.isEnabled = result
     }
 
