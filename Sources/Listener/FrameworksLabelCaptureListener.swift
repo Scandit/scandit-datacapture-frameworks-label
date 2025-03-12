@@ -13,12 +13,11 @@ public enum FrameworksLabelCaptureEvent: String, CaseIterable {
     case brushForLabel = "LabelCaptureBasicOverlayListener.brushForLabel"
     case didTapLabel = "LabelCaptureBasicOverlayListener.didTapLabel"
     case viewForLabel = "LabelCaptureAdvancedOverlayListener.viewForLabel"
+    case viewForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.viewForCapturedLabelField"
     case anchorForLabel = "LabelCaptureAdvancedOverlayListener.anchorForLabel"
+    case anchorForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.anchorForCapturedLabelField"
     case offsetForLabel = "LabelCaptureAdvancedOverlayListener.offsetForLabel"
-    case didTapOnViewForLabel = "LabelCaptureAdvancedOverlayListener.didTapOnViewForLabel"
-    case viewForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.viewForFieldOfLabel"
-    case anchorForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.anchorForFieldOfLabel"
-    case offsetForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.offsetForFieldOfLabel"
+    case offsetForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.offsetForCapturedLabelField"
     case didTapOnViewForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.didTapOnViewForFieldOfLabel"
 }
 
@@ -36,14 +35,19 @@ extension Emitter {
 
 open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
     private let emitter: Emitter
+    private let sessionHolder: SessionHolder<FrameworksLabelCaptureSession>
 
-    public init(emitter: Emitter) {
+    public init(emitter: Emitter, sessionHolder: SessionHolder<FrameworksLabelCaptureSession>) {
         self.emitter = emitter
+        self.sessionHolder = sessionHolder
     }
 
     private var isEnabled = AtomicBool()
-
-    private var sessionHolder = SessionHolder<LabelCaptureSession>()
+    
+    private lazy var isLicenseArFull: Bool? = {
+        // This check works only when the first frame has been processed
+        return DefaultFrameworksCaptureContext.shared.context?.isFeatureSupported("barcode-ar-full")
+    }()
     
     private let didUpdateEvent = EventWithResult<Bool>(event: Event(.didUpdateSession))
 
@@ -55,10 +59,12 @@ open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
         let frameId = LastFrameData.shared.addToCache(frameData: frameData)
         defer { LastFrameData.shared.removeFromCache(frameId: frameId) }
         
-        sessionHolder.value = session
+        sessionHolder.value = FrameworksLabelCaptureSession.create(from: session)
         let result = didUpdateEvent.emit(on: emitter,
                                          payload: ["session": session.jsonString,
-                                                   "frameId": frameId]) ?? true
+                                                   "frameId": frameId,
+                                                   "isBarcodeArFull": isLicenseArFull
+                                                  ]) ?? true
         labelCapture.isEnabled = result
     }
 
@@ -78,23 +84,5 @@ open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
             isEnabled.value = false
             didUpdateEvent.reset()
         }
-    }
-
-    public func label(with id: Int) throws -> CapturedLabel {
-        guard let session = sessionHolder.value else {
-            throw FrameworksLabelCaptureError.noSession
-        }
-        if let label = session.capturedLabels.first(where: { $0.trackingId == id }) {
-            return label
-        }
-        throw FrameworksLabelCaptureError.noSuchLabel(id)
-    }
-
-    public func labelAndField(with id: Int, and fieldName: String) throws -> (CapturedLabel, LabelField) {
-        let label = try label(with: id)
-        guard let field = label.fields.first(where: { $0.name == fieldName }) else {
-            throw FrameworksLabelCaptureError.noSuchField(id, fieldName)
-        }
-        return (label, field)
     }
 }
