@@ -64,11 +64,8 @@ open class FrameworksLabelCaptureAdvancedOverlayListener: NSObject, LabelCapture
                                             of capturedLabel: CapturedLabel) -> UIView? {
         if isEnabled.value, emitter.hasListener(for: .viewForFieldOfLabel) {
             let payload = [
-                "field": capturedField.jsonString,
-                "identifier": FrameworksLabelCaptureSession.getFieldKey(
-                    trackingId: capturedLabel.trackingId,
-                    fieldName: capturedField.name
-                )
+                "label": capturedLabel.jsonString,
+                "field": capturedField.jsonString
             ]
             viewForFieldOfLabelEvent.emit(on: emitter, payload: payload)
         }
@@ -80,11 +77,8 @@ open class FrameworksLabelCaptureAdvancedOverlayListener: NSObject, LabelCapture
                                             of capturedLabel: CapturedLabel) -> Anchor {
         if isEnabled.value, emitter.hasListener(for: .anchorForFieldOfLabel) {
             let payload = [
-                "field": capturedField.jsonString,
-                "identifier": FrameworksLabelCaptureSession.getFieldKey(
-                    trackingId: capturedLabel.trackingId,
-                    fieldName: capturedField.name
-                )
+                "label": capturedLabel.jsonString,
+                "field": capturedField.jsonString
             ]
             anchorForFieldOfLabelEvent.emit(on: emitter, payload: payload)
         }
@@ -96,11 +90,8 @@ open class FrameworksLabelCaptureAdvancedOverlayListener: NSObject, LabelCapture
                                             of capturedLabel: CapturedLabel) -> PointWithUnit {
         if isEnabled.value, emitter.hasListener(for: .offsetForFieldOfLabel) {
             let payload = [
-                "field": capturedField.jsonString,
-                "identifier": FrameworksLabelCaptureSession.getFieldKey(
-                    trackingId: capturedLabel.trackingId,
-                    fieldName: capturedField.name
-                )
+                "label": capturedLabel.jsonString,
+                "field": capturedField.jsonString
             ]
             offsetForFieldOfLabelEvent.emit(on: emitter, payload: payload)
         }

@@ -7,18 +7,18 @@
 import ScanditFrameworksCore
 import ScanditLabelCapture
 
-public struct LabelCaptureDefaults: DefaultsEncodable {
+struct LabelCaptureDefaults: DefaultsEncodable {
     private let cameraSettings: CameraSettingsDefaults
     private let basicOverlay: LabelCaptureBasicOverlayDefaults
 
-    public func toEncodable() -> [String: Any?] {
+    func toEncodable() -> [String: Any?] {
         [
             "RecommendedCameraSettings": cameraSettings.toEncodable(),
             "LabelCaptureBasicOverlay": basicOverlay.toEncodable()
         ]
     }
 
-    public static var shared: LabelCaptureDefaults = {
+    static var shared: LabelCaptureDefaults = {
         .init(cameraSettings: 
                 CameraSettingsDefaults(
                     cameraSettings: LabelCapture.recommendedCameraSettings
