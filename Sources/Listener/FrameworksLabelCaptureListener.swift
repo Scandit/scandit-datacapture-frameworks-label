@@ -42,11 +42,14 @@ open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
         self.sessionHolder = sessionHolder
     }
 
+    private var isEnabled = AtomicBool()
+
     private let didUpdateEvent = EventWithResult<Bool>(event: Event(.didUpdateSession))
 
     public func labelCapture(_ labelCapture: LabelCapture,
                              didUpdate session: LabelCaptureSession,
                              frameData: FrameData) {
+        guard isEnabled.value, emitter.hasListener(for: .didUpdateSession) else { return }
         
         let frameId = LastFrameData.shared.addToCache(frameData: frameData)
         defer { LastFrameData.shared.removeFromCache(frameId: frameId) }
@@ -64,9 +67,18 @@ open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
     public func finishDidUpdateCallback(enabled: Bool) {
         didUpdateEvent.unlock(value: enabled)
     }
-    
-    public func reset() {
-        sessionHolder.value = nil
-        didUpdateEvent.reset()
+
+    public func enable() {
+        if isEnabled.value {
+            return
+        }
+        isEnabled.value = true
+    }
+
+    public func disable() {
+        if isEnabled.value {
+            isEnabled.value = false
+            didUpdateEvent.reset()
+        }
     }
 }
