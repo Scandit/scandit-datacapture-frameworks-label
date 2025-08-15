@@ -10,13 +10,11 @@ import ScanditLabelCapture
 public struct LabelCaptureDefaults: DefaultsEncodable {
     private let cameraSettings: CameraSettingsDefaults
     private let basicOverlay: LabelCaptureBasicOverlayDefaults
-    private let validationFlowOverlay: LabelCaptureValidationFlowOverlayDefaults
 
     public func toEncodable() -> [String: Any?] {
         [
             "RecommendedCameraSettings": cameraSettings.toEncodable(),
-            "LabelCaptureBasicOverlay": basicOverlay.toEncodable(),
-            "LabelCaptureValidationFlowOverlay": validationFlowOverlay.toEncodable()
+            "LabelCaptureBasicOverlay": basicOverlay.toEncodable()
         ]
     }
 
@@ -38,8 +36,7 @@ public struct LabelCaptureDefaults: DefaultsEncodable {
                     EncodableBrush(
                         brush: LabelCaptureBasicOverlay.defaultLabelBrush
                     )
-              ),
-              validationFlowOverlay: LabelCaptureValidationFlowOverlayDefaults.shared
+              )
         )
     }()
 }
