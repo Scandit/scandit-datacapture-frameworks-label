@@ -36,6 +36,7 @@ extension Emitter {
 open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
     private let emitter: Emitter
     private let sessionHolder: SessionHolder<FrameworksLabelCaptureSession>
+    private let isEnabled: AtomicValue<Bool> = AtomicValue(false)
 
     public init(emitter: Emitter, sessionHolder: SessionHolder<FrameworksLabelCaptureSession>) {
         self.emitter = emitter
@@ -48,10 +49,19 @@ open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
                              didUpdate session: LabelCaptureSession,
                              frameData: FrameData) {
         
+        sessionHolder.value = FrameworksLabelCaptureSession.create(from: session)
+        
+        if (!isEnabled.value) {
+            return
+        }
+        
+        if (!emitter.hasListener(for: .didUpdateSession)) {
+            return
+        }
+        
         let frameId = LastFrameData.shared.addToCache(frameData: frameData)
         defer { LastFrameData.shared.removeFromCache(frameId: frameId) }
         
-        sessionHolder.value = FrameworksLabelCaptureSession.create(from: session)
         let payload: [String: Any?] =  [
             "session": session.jsonString,
             "frameId": frameId
@@ -63,6 +73,10 @@ open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
 
     public func finishDidUpdateCallback(enabled: Bool) {
         didUpdateEvent.unlock(value: enabled)
+    }
+    
+    public func setEnabled(enabled: Bool) {
+        isEnabled.value = enabled
     }
     
     public func reset() {
