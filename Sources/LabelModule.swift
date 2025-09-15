@@ -16,10 +16,9 @@ enum FrameworksLabelCaptureError: Error {
     case noAdvancedOverlay
 }
 
-open class LabelModule: BasicFrameworkModule<LabelCapture> {
+open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
     private let deserializer: LabelCaptureDeserializer
     private let emitter: Emitter
-    private let listener: FrameworksLabelCaptureListener
     private let basicOverlayListener: FrameworksLabelCaptureBasicOverlayListener
     private let validationFlowListener: FrameworksLabelCaptureValidationFlowListener
     private let advancedOverlayListener: FrameworksLabelCaptureAdvancedOverlayListener
@@ -36,7 +35,6 @@ open class LabelModule: BasicFrameworkModule<LabelCapture> {
                  captureViewHandler: DataCaptureViewHandler = DataCaptureViewHandler.shared) {
         self.emitter = emitter
         self.deserializer = deserializer
-        self.listener = FrameworksLabelCaptureListener(emitter: emitter, sessionHolder: sessionHolder)
         self.basicOverlayListener = FrameworksLabelCaptureBasicOverlayListener(emitter: emitter)
         self.advancedOverlayListener = FrameworksLabelCaptureAdvancedOverlayListener(emitter: emitter)
         self.validationFlowListener = FrameworksLabelCaptureValidationFlowListener(emitter: emitter)
@@ -57,18 +55,18 @@ open class LabelModule: BasicFrameworkModule<LabelCapture> {
     public let defaults = LabelCaptureDefaults.shared
 
     public func addListener(_ modeId: Int) {
-        guard let _ = getModeFromCache(modeId) else {
+        guard let mode = getModeFromCache(modeId) else {
             addPostModeCreationAction(modeId, action: {
                 self.addListener(modeId)
             })
             return
         }
-        listener.setEnabled(enabled: true)
+        mode.addListener()
     }
 
     public func removeListener(_ modeId: Int) {
-        if let _ = getModeFromCache(modeId) {
-            listener.setEnabled(enabled: false)
+        if let mode = getModeFromCache(modeId) {
+            mode.removeListener()
         }
     }
 
@@ -114,8 +112,10 @@ open class LabelModule: BasicFrameworkModule<LabelCapture> {
         }
     }
 
-    public func finishDidUpdateCallback(enabled: Bool) {
-        listener.finishDidUpdateCallback(enabled: enabled)
+    public func finishDidUpdateCallback(modeId: Int, enabled: Bool) {
+        if let mode = getModeFromCache(modeId) {
+            mode.finishDidUpdateSession(enabled: enabled)
+        }
     }
 
     public func setModeEnabled(modeId: Int, enabled: Bool) {
@@ -438,7 +438,7 @@ open class LabelModule: BasicFrameworkModule<LabelCapture> {
         }
 
         do {
-            try deserializer.updateMode(mode, fromJSONString: modeJson)
+            try mode.updateModeFromJson(modeJson: modeJson)
             result.success()
         } catch {
             handleError(error, result: result)
@@ -451,8 +451,7 @@ open class LabelModule: BasicFrameworkModule<LabelCapture> {
             return
         }
         do {
-            let settings = try deserializer.settings(fromJSONString: modeSettingsJson)
-            mode.apply(settings)
+            try mode.applySettings(modeSettingsJson: modeSettingsJson)
             result.success()
         } catch {
             handleError(error, result: result)
@@ -523,6 +522,26 @@ open class LabelModule: BasicFrameworkModule<LabelCapture> {
         }
         dispatchMain(block)
     }
+    
+    public func updateFeedback(modeId: Int, feedbackJson: String, result: FrameworksResult) {
+        dispatchMain { [weak self] in
+            guard let self = self else {
+                result.success()
+                return
+            }
+            
+            do {
+                // in case we don't have a mode yet, it will return success and cache the new
+                // feedback to be applied after the creation of the view.
+                if let mode = self.getModeFromCache(modeId) {
+                    try mode.updateLabelCaptureFeedback(feedbackJson: feedbackJson)
+                }
+                result.success()
+            } catch let error {
+                result.reject(error: error)
+            }
+        }
+    }
 
     // MARK: - Method Execution
 
@@ -533,8 +552,8 @@ open class LabelModule: BasicFrameworkModule<LabelCapture> {
             result.success(result: defaults)
 
         case "finishLabelCaptureListenerDidUpdateSession":
-            if let enabled: Bool = method.argument(key: "isEnabled") {
-                finishDidUpdateCallback(enabled: enabled)
+            if let enabled: Bool = method.argument(key: "isEnabled"), let modeId: Int = method.argument(key: "modeId") {
+                finishDidUpdateCallback(modeId: modeId, enabled: enabled)
             }
             result.success()
 
@@ -741,7 +760,19 @@ open class LabelModule: BasicFrameworkModule<LabelCapture> {
                 return true
             }
             updateValidationFlowOverlay(dataCaptureViewId, overlayJson: overlayJson, result: result)
-
+            
+        case "updateLabelCaptureFeedback":
+            guard let modeId: Int = method.argument(key: "modeId") else {
+                result.reject(error: ScanditFrameworksCoreError.nilArgument)
+                return true
+            }
+            guard let feedbackJson: String = method.argument(key: "feedbackJson") else {
+                result.reject(error: ScanditFrameworksCoreError.nilArgument)
+                return true
+            }
+            
+            updateFeedback(modeId: modeId, feedbackJson: feedbackJson, result: result)
+            
         default:
             return false
         }
@@ -757,32 +788,26 @@ open class LabelModule: BasicFrameworkModule<LabelCapture> {
 
 extension LabelModule: DeserializationLifeCycleObserver {
     public func dataCaptureContext(addMode modeJson: String) throws {
-        let json = JSONValue(string: modeJson)
-
-        if json.string(forKey: "type") != "labelCapture" {
-            return
-        }
-        let modeId = json.integer(forKey: "modeId", default: -1)
-
-        if modeId == -1 {
-            throw ScanditFrameworksCoreError.nilArgument
-        }
-
         guard let dcContext = captureContext.context else {
             return
         }
 
         do {
-            listener.reset()
+            let creationParams = try LabelCaptureModeCreationData.fromJson(modeJson)
 
-            let mode = try deserializer.mode(fromJSONString: modeJson, with: dcContext)
-            captureContext.addMode(mode: mode)
-            mode.addListener(listener)
-            listener.setEnabled(enabled: json.bool(forKey: "hasListeners", default: false))
+            if creationParams.modeType != "labelCapture" {
+                return
+            }
 
-            addModeToCache(modeId: modeId, mode: mode)
-            mode.isEnabled = json.bool(forKey: "enabled")
-            for action in getPostModeCreationActions(modeId) {
+            let mode = try FrameworksLabelCaptureMode.create(
+                emitter: emitter, captureContext: DefaultFrameworksCaptureContext.shared, creationData: creationParams, dataCaptureContext: dcContext
+            )
+
+            addModeToCache(modeId: creationParams.modeId, mode: mode)
+            for action in getPostModeCreationActions(creationParams.modeId) {
+                action()
+            }
+            for action in getPostModeCreationActionsByParent(creationParams.parentId ?? -1) {
                 action()
             }
         } catch {
@@ -802,20 +827,15 @@ extension LabelModule: DeserializationLifeCycleObserver {
         guard let mode = getModeFromCache(modeId) else {
             return
         }
-        listener.reset()
-        captureContext.removeMode(mode: mode)
-        mode.removeListener(listener)
-
+        mode.dispose()
         _ = removeModeFromCache(modeId)
         clearPostModeCreationActions(modeId)
     }
 
     public func dataCaptureContextAllModeRemoved() {
         for mode in getAllModesInCache() {
-            mode.removeListener(listener)
+            mode.dispose()
         }
-        listener.reset()
-
         removeAllModesFromCache()
         clearPostModeCreationActions(nil)
     }
@@ -826,33 +846,65 @@ extension LabelModule: DeserializationLifeCycleObserver {
 
     public func dataCaptureView(addOverlay overlayJson: String, to view: FrameworksDataCaptureView) throws {
         let creationData = LabelCaptureOverlayCreationData.fromJson(overlayJson)
-        guard let mode = getTopmostMode() else {
+        if creationData.overlayType == nil {
             return
         }
-
-        try dispatchMainSync {
+        
+        let parentId = view.parentId ?? -1
+        
+        var mode: FrameworksLabelCaptureMode?
+        
+        if parentId != -1 {
+            mode = getModeFromCacheByParent(parentId) as? FrameworksLabelCaptureMode
+        } else {
+            mode = getModeFromCache(creationData.modeId)
+        }
+        
+        guard let labelCapture = mode else {
+            if parentId != -1 {
+                addPostModeCreationActionByParent(parentId) {
+                    try? self.dataCaptureView(addOverlay: overlayJson, to: view)
+                }
+            } else {
+                addPostModeCreationAction(creationData.modeId) {
+                    try? self.dataCaptureView(addOverlay: overlayJson, to: view)
+                }
+            }
+            return
+        }
+        
+        dispatchMain {  [weak self] in
+            guard let self = self else {
+                return
+            }
+            
             let overlay: DataCaptureOverlay
-
-            switch creationData.overlayType {
-            case .basic:
-                overlay = try deserializer.basicOverlay(fromJSONString: overlayJson, withMode: mode)
-
-                if creationData.hasListener {
-                    (overlay as? LabelCaptureBasicOverlay)?.delegate = basicOverlayListener
+            
+            do {
+                switch creationData.overlayType {
+                case .basic:
+                    overlay = try self.deserializer.basicOverlay(fromJSONString: overlayJson, withMode: labelCapture.mode)
+                    
+                    if creationData.hasListener {
+                        (overlay as? LabelCaptureBasicOverlay)?.delegate = basicOverlayListener
+                    }
+                case .advanced:
+                    overlay = try  self.deserializer.advancedOverlay(fromJSONString: overlayJson, withMode: labelCapture.mode)
+                    
+                    if creationData.hasListener {
+                        (overlay as? LabelCaptureAdvancedOverlay)?.delegate = advancedOverlayListener
+                    }
+                case .validationFlow:
+                    overlay = try  self.deserializer.validationFlowOverlay(fromJSONString: overlayJson, withMode: labelCapture.mode)
+                    
+                    if creationData.hasListener {
+                        (overlay as? LabelCaptureValidationFlowOverlay)?.delegate = validationFlowListener
+                    }
+                default:
+                    return
                 }
-            case .advanced:
-                overlay = try deserializer.advancedOverlay(fromJSONString: overlayJson, withMode: mode)
-
-                if creationData.hasListener {
-                    (overlay as? LabelCaptureAdvancedOverlay)?.delegate = advancedOverlayListener
-                }
-            case .validationFlow:
-                overlay = try deserializer.validationFlowOverlay(fromJSONString: overlayJson, withMode: mode)
-
-                if creationData.hasListener {
-                    (overlay as? LabelCaptureValidationFlowOverlay)?.delegate = validationFlowListener
-                }
-            default:
+            } catch {
+                Log.error(error)
                 return
             }
 
