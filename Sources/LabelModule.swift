@@ -800,7 +800,11 @@ extension LabelModule: DeserializationLifeCycleObserver {
             }
 
             let mode = try FrameworksLabelCaptureMode.create(
-                emitter: emitter, captureContext: DefaultFrameworksCaptureContext.shared, creationData: creationParams, dataCaptureContext: dcContext
+                emitter: emitter,
+                captureContext: DefaultFrameworksCaptureContext.shared,
+                creationData: creationParams,
+                dataCaptureContext: dcContext,
+                sessionHolder: sessionHolder
             )
 
             addModeToCache(modeId: creationParams.modeId, mode: mode)

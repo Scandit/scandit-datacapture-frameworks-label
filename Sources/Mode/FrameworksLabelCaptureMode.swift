@@ -95,9 +95,15 @@ public class FrameworksLabelCaptureMode: FrameworksBaseMode {
         emitter: Emitter,
         captureContext: DefaultFrameworksCaptureContext,
         creationData: LabelCaptureModeCreationData,
-        dataCaptureContext: DataCaptureContext
+        dataCaptureContext: DataCaptureContext,
+        sessionHolder: SessionHolder<FrameworksLabelCaptureSession>
     ) throws -> FrameworksLabelCaptureMode {
-        let listener = FrameworksLabelCaptureListener(emitter: emitter, modeId: creationData.modeId, sessionHolder: SessionHolder())
+        let listener = FrameworksLabelCaptureListener(
+            emitter: emitter,
+            modeId: creationData.modeId,
+            sessionHolder: sessionHolder
+        )
+        
         let mode = FrameworksLabelCaptureMode(
             listener: listener,
             captureContext: captureContext
