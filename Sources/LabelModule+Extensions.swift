@@ -8,15 +8,11 @@ import ScanditFrameworksCore
 import ScanditLabelCapture
 
 extension LabelModule {
-    func handleError(_ error: Error, result: FrameworksResult) {
-        result.reject(error: error)
-    }
-    
     // MARK: - Label and Field Retrieval
 
     func getLabel(byId id: Int, result: FrameworksResult) -> CapturedLabel? {
         guard let label = sessionHolder.value?.getLabel(byId: id) else {
-            handleError(FrameworksLabelCaptureError.noSuchLabel(id), result: result)
+            result.reject(error: FrameworksLabelCaptureError.noSuchLabel(id))
             return nil
         }
         return label
@@ -27,7 +23,7 @@ extension LabelModule {
 
         let fieldKey = FrameworksLabelCaptureSession.getFieldKey(trackingId: labelId, fieldName: fieldName)
         guard let field = sessionHolder.value?.getField(byKey: fieldKey) else {
-            handleError(FrameworksLabelCaptureError.noSuchField(labelId, fieldName), result: result)
+            result.reject(error: FrameworksLabelCaptureError.noSuchField(labelId, fieldName))
             return nil
         }
 
@@ -35,6 +31,34 @@ extension LabelModule {
     }
 
     // MARK: - Overlay Operations
+
+    func withAdvancedOverlay<T>(_ operation: @escaping (LabelCaptureAdvancedOverlay) -> T,
+                               result: FrameworksResult,
+                               completion: @escaping (T) -> Void) {
+        guard let overlay: LabelCaptureAdvancedOverlay = advancedOverlay else {
+            result.reject(error: FrameworksLabelCaptureError.noAdvancedOverlay)
+            return
+        }
+
+        dispatchMain {
+            let operationResult = operation(overlay)
+            completion(operationResult)
+        }
+    }
+
+    func withBasicOverlay<T>(_ operation: @escaping (LabelCaptureBasicOverlay) -> T,
+                            result: FrameworksResult,
+                            completion: @escaping (T) -> Void) {
+        guard let overlay: LabelCaptureBasicOverlay = basicOverlay else {
+            result.reject(error: FrameworksLabelCaptureError.noAdvancedOverlay)
+            return
+        }
+
+        dispatchMain {
+            let operationResult = operation(overlay)
+            completion(operationResult)
+        }
+    }
 
     // MARK: - View Creation
 
@@ -52,7 +76,7 @@ extension LabelModule {
     func createBrush(from json: String?, result: FrameworksResult) -> Brush? {
         guard let brushJson = json else { return nil }
         guard let brush = Brush(jsonString: brushJson) else {
-            handleError(FrameworksLabelCaptureError.invalidBrush(brushJson), result: result)
+            result.reject(error: FrameworksLabelCaptureError.invalidBrush(brushJson))
             return nil
         }
         return brush
