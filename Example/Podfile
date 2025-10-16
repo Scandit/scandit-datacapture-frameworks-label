@@ -5,4 +5,8 @@ target 'Example' do
 
   pod 'scandit-datacapture-frameworks-label', :path => '../'
 
+  # REPLACE-BEGIN
+  pod 'scandit-datacapture-frameworks-barcode', :path => '../../scandit-datacapture-frameworks-barcode'
+  pod 'scandit-datacapture-frameworks-core', :path => '../../scandit-datacapture-frameworks-core'
+  # REPLACE-END
 end

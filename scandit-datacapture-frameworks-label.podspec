@@ -1,18 +1,26 @@
-Pod::Spec.new do |s|
-    s.name                    = 'scandit-datacapture-frameworks-label'
-    s.version                 = '7.4.3'
-    s.summary                 = 'Scandit Frameworks Shared Label module'
-    s.homepage                = 'https://github.com/Scandit/scandit-datacapture-frameworks-label'
-    s.license                 = { :type => 'Apache-2.0' , :text => 'Licensed under the Apache License, Version 2.0 (the "License");' }
-    s.author                  = { 'Scandit' => 'support@scandit.com' }
-    s.platforms               = { :ios => '14.0' }
-    s.source                  = { :git => 'https://github.com/Scandit/scandit-datacapture-frameworks-label.git', :tag => '7.4.3' }
-    s.swift_version           = '5.7'
-    s.source_files            = 'Sources/**/*.{h,m,swift}'
-    s.requires_arc            = true
-    s.module_name             = 'ScanditFrameworksLabel'
-    s.header_dir              = 'ScanditFrameworksLabel'
+require "json"
 
-    s.dependency 'ScanditLabelCapture', '= 7.4.3'
-    s.dependency 'scandit-datacapture-frameworks-barcode', '= 7.4.3'
+package = JSON.parse(File.read(File.expand_path(File.join(__dir__, "..", "info.json"))))
+name = "scandit-datacapture-frameworks-label"
+version = package["version"]
+
+Pod::Spec.new do |s|
+    s.name                    = name
+    s.version                 = version
+    s.summary                 = package["descriptions"][name]
+    s.homepage                = package["homepages"][name]
+    s.license                 = { :type => 'Apache-2.0' , :text => 'Licensed under the Apache License, Version 2.0 (the "License");' }
+    s.author                  = { "Scandit" => "support@scandit.com" }
+    s.platforms               = { :ios => "15.0" }
+    s.source                  = { :git => "https://github.com/Scandit/scandit-datacapture-frameworks-label.git", :tag => "#{package["version"]}" }
+    s.swift_version           = "5.7"
+    s.source_files            = "Sources/**/*.{h,m,swift}"
+    s.public_header_files     = "Sources/ScanditFrameworksLabelObjC/**/*.h"
+    s.requires_arc            = true
+    s.module_name             = "ScanditFrameworksLabel"
+    s.header_dir              = "ScanditFrameworksLabel"
+
+    s.ios.vendored_frameworks = "Frameworks/ScanditLabelCapture.xcframework"
+
+    s.dependency "scandit-datacapture-frameworks-barcode", "= #{version}"
 end

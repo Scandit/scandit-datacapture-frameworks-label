@@ -14,8 +14,6 @@ open class FrameworksLabelCaptureBasicOverlayListener: NSObject, LabelCaptureBas
     private let brushForLabelEvent = Event(.brushForLabel)
     private let didTapLabelEvent = Event(.didTapLabel)
 
-    private var isEnabled = AtomicBool()
-
     public init(emitter: Emitter) {
         self.emitter = emitter
     }
@@ -23,7 +21,7 @@ open class FrameworksLabelCaptureBasicOverlayListener: NSObject, LabelCaptureBas
     public func labelCaptureBasicOverlay(_ overlay: LabelCaptureBasicOverlay,
                                          brushFor field: LabelField,
                                          of label: CapturedLabel) -> Brush? {
-        guard isEnabled.value, emitter.hasListener(for: .brushForFieldOfLabel) else { return nil }
+        guard emitter.hasListener(for: .brushForFieldOfLabel) else { return nil }
         let payload = [
             "field": field.jsonString,
             "label": label.jsonString
@@ -34,24 +32,14 @@ open class FrameworksLabelCaptureBasicOverlayListener: NSObject, LabelCaptureBas
     
     public func labelCaptureBasicOverlay(_ overlay: LabelCaptureBasicOverlay, 
                                          brushFor label: CapturedLabel) -> Brush? {
-        guard isEnabled.value, emitter.hasListener(for: .brushForLabel) else { return nil }
+        guard emitter.hasListener(for: .brushForLabel) else { return nil }
         brushForLabelEvent.emit(on: emitter, payload: ["label": label.jsonString])
         return overlay.labelBrush
     }
     
     public func labelCaptureBasicOverlay(_ overlay: LabelCaptureBasicOverlay, 
                                          didTap label: CapturedLabel) {
-        guard isEnabled.value, emitter.hasListener(for: .didTapLabel) else { return }
+        guard emitter.hasListener(for: .didTapLabel) else { return }
         didTapLabelEvent.emit(on: emitter, payload: ["label": label.jsonString])
-    }
-
-    public func enable() {
-        if isEnabled.value { return }
-        isEnabled.value = true
-    }
-
-    public func disable() {
-        guard isEnabled.value else { return }
-        isEnabled.value = false
     }
 }
