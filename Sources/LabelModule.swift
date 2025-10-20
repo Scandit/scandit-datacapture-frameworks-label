@@ -236,11 +236,9 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
         if let dcView = self.captureViewHandler.getView(dataCaptureViewId),
            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
-            dispatchMain {[weak self] in
-                if let view = self?.createView(from: viewData, identifier: String(identifier)) {
-                    overlay.setView(view, for: label)
-                }
-            }   
+            if let view = self.createView(from: viewData, identifier: String(identifier)) {
+                overlay.setView(view, for: label)
+            }
         }
 
         result.success()
@@ -268,9 +266,9 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
         let viewData = viewParams["view"] as? Data
 
-        dispatchMain { [weak self] in
+        dispatchMain {
             let view = viewData.flatMap { data in
-                self?.advancedOverlayViewCache?.getOrCreateView(
+                self.advancedOverlayViewCache?.getOrCreateView(
                     fromBase64EncodedData: data,
                     withIdentifier: identifier
                 )
@@ -284,13 +282,12 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
     }
 
     public func setViewForCapturedLabelField(_ dataCaptureViewId: Int, for label: CapturedLabel, and labelField: LabelField, view: UIView?, result: FrameworksResult) {
-        dispatchMain { [weak self] in
-            guard let dcView = self?.getDataCaptureView(for: dataCaptureViewId),
-                  let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() else {
-                self?.handleError(FrameworksLabelCaptureError.noAdvancedOverlay, result: result)
-                return
-            }
-            
+        guard let dcView = getDataCaptureView(for: dataCaptureViewId),
+              let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() else {
+            handleError(FrameworksLabelCaptureError.noAdvancedOverlay, result: result)
+            return
+        }
+        dispatchMain {
             overlay.setView(view, for: labelField, of: label)
             result.success()
         }
