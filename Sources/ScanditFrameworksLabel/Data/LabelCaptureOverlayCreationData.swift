@@ -5,6 +5,7 @@
  */
 
 import ScanditFrameworksCore
+import ScanditCaptureCore
 
 public enum LabelCaptureOverlayType {
     case basic

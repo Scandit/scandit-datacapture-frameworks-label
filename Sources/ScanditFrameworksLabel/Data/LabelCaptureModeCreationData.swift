@@ -5,6 +5,7 @@
  */
 
 import ScanditFrameworksCore
+import ScanditCaptureCore
 
 public struct LabelCaptureModeCreationData {
     public let modeJson: String

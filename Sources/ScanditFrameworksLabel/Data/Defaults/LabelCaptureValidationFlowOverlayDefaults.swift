@@ -6,6 +6,9 @@
 
 import ScanditFrameworksCore
 import ScanditLabelCapture
+#if !COCOAPODS
+import ScanditFrameworksLabelObjC
+#endif
 
 public struct LabelCaptureValidationFlowOverlayDefaults: DefaultsEncodable {
     private let settings: FrameworksLabelCaptureValidationFlowSettingsDefaults
