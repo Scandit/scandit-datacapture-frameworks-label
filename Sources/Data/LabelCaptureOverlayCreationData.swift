@@ -4,7 +4,6 @@
  * Copyright (C) 2025- Scandit AG. All rights reserved.
  */
 
-import ScanditCaptureCore
 import ScanditFrameworksCore
 
 public enum LabelCaptureOverlayType {
@@ -17,13 +16,11 @@ public struct LabelCaptureOverlayCreationData {
     let overlayType: LabelCaptureOverlayType?
     let overlayJsonString: String
     let hasListener: Bool
-    let modeId: Int
 
-    private init(overlayType: LabelCaptureOverlayType?, overlayJsonString: String, hasListener: Bool, modeId: Int) {
+    private init(overlayType: LabelCaptureOverlayType?, overlayJsonString: String, hasListener: Bool) {
         self.overlayType = overlayType
         self.overlayJsonString = overlayJsonString
         self.hasListener = hasListener
-        self.modeId = modeId
     }
 
     static func fromJson(_ overlayJsonString: String) -> LabelCaptureOverlayCreationData {
@@ -43,13 +40,11 @@ public struct LabelCaptureOverlayCreationData {
         }()
 
         let hasListener = overlayJson.bool(forKey: "hasListener", default: false)
-        let modeId = overlayJson.integer(forKey: "modeId", default: -1)
 
         return LabelCaptureOverlayCreationData(
             overlayType: overlayType,
             overlayJsonString: overlayJsonString,
-            hasListener: hasListener,
-            modeId: modeId
+            hasListener: hasListener
         )
     }
 }

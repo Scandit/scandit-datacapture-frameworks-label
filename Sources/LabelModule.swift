@@ -16,9 +16,10 @@ enum FrameworksLabelCaptureError: Error {
     case noAdvancedOverlay
 }
 
-open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
+open class LabelModule: BasicFrameworkModule<LabelCapture> {
     private let deserializer: LabelCaptureDeserializer
     private let emitter: Emitter
+    private let listener: FrameworksLabelCaptureListener
     private let basicOverlayListener: FrameworksLabelCaptureBasicOverlayListener
     private let validationFlowListener: FrameworksLabelCaptureValidationFlowListener
     private let advancedOverlayListener: FrameworksLabelCaptureAdvancedOverlayListener
@@ -30,13 +31,12 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
     private let didTapViewForFieldOfLabelEvent = Event(.didTapOnViewForFieldOfLabel)
 
-    public init(
-        emitter: Emitter,
-        deserializer: LabelCaptureDeserializer = LabelCaptureDeserializer(),
-        captureViewHandler: DataCaptureViewHandler = DataCaptureViewHandler.shared
-    ) {
+    public init(emitter: Emitter,
+                 deserializer: LabelCaptureDeserializer = LabelCaptureDeserializer(),
+                 captureViewHandler: DataCaptureViewHandler = DataCaptureViewHandler.shared) {
         self.emitter = emitter
         self.deserializer = deserializer
+        self.listener = FrameworksLabelCaptureListener(emitter: emitter, sessionHolder: sessionHolder)
         self.basicOverlayListener = FrameworksLabelCaptureBasicOverlayListener(emitter: emitter)
         self.advancedOverlayListener = FrameworksLabelCaptureAdvancedOverlayListener(emitter: emitter)
         self.validationFlowListener = FrameworksLabelCaptureValidationFlowListener(emitter: emitter)
@@ -57,76 +57,65 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
     public let defaults = LabelCaptureDefaults.shared
 
     public func addListener(_ modeId: Int) {
-        guard let mode = getModeFromCache(modeId) else {
-            addPostModeCreationAction(
-                modeId,
-                action: {
-                    self.addListener(modeId)
-                }
-            )
+        guard let _ = getModeFromCache(modeId) else {
+            addPostModeCreationAction(modeId, action: {
+                self.addListener(modeId)
+            })
             return
         }
-        mode.addListener()
+        listener.setEnabled(enabled: true)
     }
 
     public func removeListener(_ modeId: Int) {
-        if let mode = getModeFromCache(modeId) {
-            mode.removeListener()
+        if let _ = getModeFromCache(modeId) {
+            listener.setEnabled(enabled: false)
         }
     }
 
     public func addBasicOverlayListener(_ dataCaptureViewId: Int) {
         if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType() {
             overlay.delegate = basicOverlayListener
         }
     }
 
     public func removeBasicOverlayListener(_ dataCaptureViewId: Int) {
         if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType() {
             overlay.delegate = nil
         }
     }
 
     public func addAdvancedOverlayListener(_ dataCaptureViewId: Int) {
         if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
             overlay.delegate = advancedOverlayListener
         }
     }
 
     public func removeAdvancedOverlayListener(_ dataCaptureViewId: Int) {
         if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
             overlay.delegate = nil
         }
     }
 
     public func addValidationFlowOverlayListener(_ dataCaptureViewId: Int) {
         if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType() {
             overlay.delegate = validationFlowListener
         }
     }
 
     public func removeValidationFlowOverlayListener(_ dataCaptureViewId: Int) {
         if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType() {
             overlay.delegate = nil
         }
     }
 
-    public func finishDidUpdateCallback(modeId: Int, enabled: Bool) {
-        if let mode = getModeFromCache(modeId) {
-            mode.finishDidUpdateSession(enabled: enabled)
-        }
+    public func finishDidUpdateCallback(enabled: Bool) {
+        listener.finishDidUpdateCallback(enabled: enabled)
     }
 
     public func setModeEnabled(modeId: Int, enabled: Bool) {
@@ -136,20 +125,16 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
         mode.isEnabled = enabled
     }
 
-    public func label(
-        for labelTrackingId: Int,
-        frameSequenceId: Int? = nil
-    ) throws -> CapturedLabel {
+    public func label(for labelTrackingId: Int,
+                      frameSequenceId: Int? = nil) throws -> CapturedLabel {
         guard let label = sessionHolder.value?.getLabel(byId: labelTrackingId) else {
             throw FrameworksLabelCaptureError.noSuchLabel(labelTrackingId)
         }
         return label
     }
 
-    public func labelAndField(
-        for labelTrackingId: Int,
-        fieldName: String
-    ) -> (CapturedLabel, LabelField)? {
+    public func labelAndField(for labelTrackingId: Int,
+                              fieldName: String) -> (CapturedLabel, LabelField)? {
         guard let label = sessionHolder.value?.getLabel(byId: labelTrackingId) else {
             return nil
         }
@@ -189,8 +174,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             }
 
             if let dcView = getDataCaptureView(for: brushForLabel.dataCaptureViewId),
-                let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType()
-            {
+               let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType() {
                 overlay.setBrush(brush, for: label)
             }
         } catch {
@@ -206,20 +190,15 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             return
         }
 
-        guard
-            let (label, field) = getField(
-                forLabel: brushForFieldOfLabel.labelTrackingId,
-                fieldName: fieldName,
-                result: result
-            ),
-            let brush = createBrush(from: brushForFieldOfLabel.brushJson, result: result)
-        else {
+        guard let (label, field) = getField(forLabel: brushForFieldOfLabel.labelTrackingId,
+                                          fieldName: fieldName,
+                                          result: result),
+              let brush = createBrush(from: brushForFieldOfLabel.brushJson, result: result) else {
             return
         }
 
         if let dcView = getDataCaptureView(for: brushForFieldOfLabel.dataCaptureViewId),
-            let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType() {
             overlay.setBrush(brush, for: field, of: label)
         }
 
@@ -238,8 +217,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
         }
 
         if let dcView = getDataCaptureView(for: viewForLabel.dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
             overlay.setView(viewForLabel.view, for: label)
         }
         result.success()
@@ -247,9 +225,8 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
     public func setViewForCapturedLabel(with viewParams: [String: Any?], result: FrameworksResult) {
         guard let identifier = viewParams["identifier"] as? Int,
-            let label = getLabel(byId: identifier, result: result),
-            let dataCaptureViewId = viewParams["dataCaptureViewId"] as? Int
-        else {
+              let label = getLabel(byId: identifier, result: result),
+              let dataCaptureViewId = viewParams["dataCaptureViewId"] as? Int else {
 
             result.success()
             return
@@ -258,12 +235,9 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
         let viewData = viewParams["view"] as? Data
 
         if let dcView = self.captureViewHandler.getView(dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
-            dispatchMain { [weak self] in
-                if let view = self?.createView(from: viewData, identifier: String(identifier)) {
-                    overlay.setView(view, for: label)
-                }
+           let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
+            if let view = self.createView(from: viewData, identifier: String(identifier)) {
+                overlay.setView(view, for: label)
             }
         }
 
@@ -272,22 +246,19 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
     public func setViewForCapturedLabelField(with viewParams: [String: Any?], result: FrameworksResult) {
         guard let identifier = viewParams["identifier"] as? String,
-            let dataCaptureViewId = viewParams["dataCaptureViewId"] as? Int
-        else {
+              let dataCaptureViewId = viewParams["dataCaptureViewId"] as? Int else {
             handleError(FrameworksLabelCaptureError.missingFieldName, result: result)
             return
         }
 
         guard let dcView = self.captureViewHandler.getView(dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        else {
+              let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() else {
             handleError(FrameworksLabelCaptureError.noAdvancedOverlay, result: result)
             return
         }
 
         guard let label = sessionHolder.value?.getLabel(byFieldKey: identifier),
-            let labelField = sessionHolder.value?.getField(byKey: identifier)
-        else {
+              let labelField = sessionHolder.value?.getField(byKey: identifier) else {
             // Most probably session already changed
             result.success()
             return
@@ -295,9 +266,9 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
         let viewData = viewParams["view"] as? Data
 
-        dispatchMain { [weak self] in
+        dispatchMain {
             let view = viewData.flatMap { data in
-                self?.advancedOverlayViewCache?.getOrCreateView(
+                self.advancedOverlayViewCache?.getOrCreateView(
                     fromBase64EncodedData: data,
                     withIdentifier: identifier
                 )
@@ -310,21 +281,13 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
         }
     }
 
-    public func setViewForCapturedLabelField(
-        _ dataCaptureViewId: Int,
-        for label: CapturedLabel,
-        and labelField: LabelField,
-        view: UIView?,
-        result: FrameworksResult
-    ) {
-        dispatchMain { [weak self] in
-            guard let dcView = self?.getDataCaptureView(for: dataCaptureViewId),
-                let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-            else {
-                self?.handleError(FrameworksLabelCaptureError.noAdvancedOverlay, result: result)
-                return
-            }
-
+    public func setViewForCapturedLabelField(_ dataCaptureViewId: Int, for label: CapturedLabel, and labelField: LabelField, view: UIView?, result: FrameworksResult) {
+        guard let dcView = getDataCaptureView(for: dataCaptureViewId),
+              let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() else {
+            handleError(FrameworksLabelCaptureError.noAdvancedOverlay, result: result)
+            return
+        }
+        dispatchMain {
             overlay.setView(view, for: labelField, of: label)
             result.success()
         }
@@ -338,8 +301,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
         }
 
         if let dcView = getDataCaptureView(for: anchorForLabel.dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
             dispatchMain {
                 overlay.setAnchor(anchorForLabel.anchor, for: label)
             }
@@ -356,8 +318,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
         }
 
         if let dcView = getDataCaptureView(for: offsetForLabel.dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
             dispatchMain {
                 overlay.setOffset(offsetForLabel.offset, for: label)
             }
@@ -376,10 +337,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             result.success()
             return
         }
-        let barcodeFieldKey = FrameworksLabelCaptureSession.getFieldKey(
-            trackingId: viewForFieldOfLabel.trackingId,
-            fieldName: fieldName
-        )
+        let barcodeFieldKey = FrameworksLabelCaptureSession.getFieldKey(trackingId: viewForFieldOfLabel.trackingId, fieldName: fieldName)
         guard let field = sessionHolder.value?.getField(byKey: barcodeFieldKey) else {
             // Most probably session already changed
             result.success()
@@ -393,14 +351,13 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
                 on: self.emitter,
                 payload: [
                     "label": label.jsonString,
-                    "field": field.jsonString,
+                    "field": field.jsonString
                 ]
             )
         }
 
         if let dcView = getDataCaptureView(for: viewForFieldOfLabel.dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
             dispatchMain {
                 overlay.setView(view, for: field, of: label)
             }
@@ -418,18 +375,14 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             result.success()
             return
         }
-        let barcodeFieldKey = FrameworksLabelCaptureSession.getFieldKey(
-            trackingId: anchorForFieldOfLabel.trackingId,
-            fieldName: fieldName
-        )
+        let barcodeFieldKey = FrameworksLabelCaptureSession.getFieldKey(trackingId: anchorForFieldOfLabel.trackingId, fieldName: fieldName)
         guard let field = sessionHolder.value?.getField(byKey: barcodeFieldKey) else {
             // Most probably session already changed
             result.success()
             return
         }
         if let dcView = getDataCaptureView(for: anchorForFieldOfLabel.dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
             dispatchMain {
                 overlay.setAnchor(anchorForFieldOfLabel.anchor, for: field, of: label)
             }
@@ -447,18 +400,14 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             result.success()
             return
         }
-        let barcodeFieldKey = FrameworksLabelCaptureSession.getFieldKey(
-            trackingId: offsetForFieldOfLabel.trackingId,
-            fieldName: fieldName
-        )
+        let barcodeFieldKey = FrameworksLabelCaptureSession.getFieldKey(trackingId: offsetForFieldOfLabel.trackingId, fieldName: fieldName)
         guard let field = sessionHolder.value?.getField(byKey: barcodeFieldKey) else {
             // Most probably session already changed
             result.success()
             return
         }
         if let dcView = getDataCaptureView(for: offsetForFieldOfLabel.dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
             dispatchMain {
                 overlay.setOffset(offsetForFieldOfLabel.offset, for: field, of: label)
             }
@@ -468,8 +417,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
     public func clearTrackedCapturedLabelViews(_ dataCaptureViewId: Int) {
         if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
+           let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
             dispatchMain {
                 overlay.clearTrackedCapturedLabelViews()
             }
@@ -490,7 +438,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
         }
 
         do {
-            try mode.updateModeFromJson(modeJson: modeJson)
+            try deserializer.updateMode(mode, fromJSONString: modeJson)
             result.success()
         } catch {
             handleError(error, result: result)
@@ -503,7 +451,8 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             return
         }
         do {
-            try mode.applySettings(modeSettingsJson: modeSettingsJson)
+            let settings = try deserializer.settings(fromJSONString: modeSettingsJson)
+            mode.apply(settings)
             result.success()
         } catch {
             handleError(error, result: result)
@@ -518,8 +467,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             }
             do {
                 if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
-                    let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType()
-                {
+                   let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType() {
                     dcView.removeOverlay(overlay)
 
                     try self.dataCaptureView(addOverlay: overlayJson, to: dcView)
@@ -541,8 +489,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             }
             do {
                 if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
-                    let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-                {
+                   let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType() {
                     dcView.removeOverlay(overlay)
 
                     try self.dataCaptureView(addOverlay: overlayJson, to: dcView)
@@ -563,8 +510,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             }
             do {
                 if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
-                    let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType()
-                {
+                   let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType() {
                     dcView.removeOverlay(overlay)
 
                     try self.dataCaptureView(addOverlay: overlayJson, to: dcView)
@@ -578,26 +524,6 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
         dispatchMain(block)
     }
 
-    public func updateFeedback(modeId: Int, feedbackJson: String, result: FrameworksResult) {
-        dispatchMain { [weak self] in
-            guard let self = self else {
-                result.success()
-                return
-            }
-
-            do {
-                // in case we don't have a mode yet, it will return success and cache the new
-                // feedback to be applied after the creation of the view.
-                if let mode = self.getModeFromCache(modeId) {
-                    try mode.updateLabelCaptureFeedback(feedbackJson: feedbackJson)
-                }
-                result.success()
-            } catch let error {
-                result.reject(error: error)
-            }
-        }
-    }
-
     // MARK: - Method Execution
 
     public func execute(method: FrameworksMethodCall, result: FrameworksResult) -> Bool {
@@ -607,8 +533,8 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             result.success(result: defaults)
 
         case "finishLabelCaptureListenerDidUpdateSession":
-            if let enabled: Bool = method.argument(key: "isEnabled"), let modeId: Int = method.argument(key: "modeId") {
-                finishDidUpdateCallback(modeId: modeId, enabled: enabled)
+            if let enabled: Bool = method.argument(key: "isEnabled") {
+                finishDidUpdateCallback(enabled: enabled)
             }
             result.success()
 
@@ -622,8 +548,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
         case "setLabelCaptureModeEnabledState":
             guard let modeId: Int = method.argument(key: "modeId"),
-                let enabled: Bool = method.argument(key: "enabled")
-            else {
+               let enabled: Bool = method.argument(key: "enabled") else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
@@ -639,8 +564,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
         case "applyLabelCaptureModeSettings":
             guard let settingsJson: String = method.argument(key: "settings"),
-                let modeId: Int = method.argument(key: "modeId")
-            else {
+                  let modeId: Int = method.argument(key: "modeId") else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
@@ -655,80 +579,74 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             result.success()
 
         case "setViewForCapturedLabel":
-            setViewForCapturedLabel(with: method.arguments(), result: result)
+            if let args: [String: Any?] = method.arguments() {
+                setViewForCapturedLabel(with: args, result: result)
+            } else {
+                result.reject(error: ScanditFrameworksCoreError.nilArgument)
+            }
+
         case "setViewForCapturedLabelField":
-            setViewForCapturedLabelField(with: method.arguments(), result: result)
+            if let args: [String: Any?] = method.arguments() {
+                setViewForCapturedLabelField(with: args, result: result)
+            } else {
+                result.reject(error: ScanditFrameworksCoreError.nilArgument)
+            }
 
         case "setAnchorForCapturedLabel":
-            guard let jsonPayload: String = method.argument(key: "anchorDataJson") else {
+            guard let anchor: String = method.argument(key: "anchor"),
+                  let trackingId: Int = method.argument(key: "identifier"),
+                  let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId") else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
-            let json = JSONValue(string: jsonPayload)
-            let anchor: String = json.string(forKey: "anchor")
-            let trackingId: Int = json.integer(forKey: "identifier")
-            let dataCaptureViewId: Int = json.integer(forKey: "dataCaptureViewId", default: -1)
-
-            let anchorForLabel = AnchorForLabel(
-                dataCaptureViewId: dataCaptureViewId,
-                anchorString: anchor,
-                trackingId: trackingId
-            )
+            let anchorForLabel = AnchorForLabel(dataCaptureViewId: dataCaptureViewId,
+                                               anchorString: anchor,
+                                               trackingId: trackingId)
             setAnchorForCapturedLabel(anchorForLabel: anchorForLabel, result: result)
 
         case "setAnchorForCapturedLabelField":
-            guard let jsonPayload: String = method.argument(key: "anchorDataJson") else {
+            guard let anchor: String = method.argument(key: "anchor"),
+                  let identifier: String = method.argument(key: "identifier"),
+                  let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId") else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
-            let json = JSONValue(string: jsonPayload)
-            let anchor: String = json.string(forKey: "anchor")
-            let identifier: String = json.string(forKey: "identifier")
-            let dataCaptureViewId: Int = json.integer(forKey: "dataCaptureViewId", default: -1)
 
             let components = identifier.components(separatedBy: String(FrameworksLabelCaptureSession.separator))
             let trackingId = Int(components[0]) ?? 0
             let fieldName = components.count > 1 ? components[1] : ""
-            let anchorForLabelField = AnchorForLabel(
-                dataCaptureViewId: dataCaptureViewId,
-                anchorString: anchor,
-                trackingId: trackingId,
-                fieldName: fieldName
-            )
+            let anchorForLabelField = AnchorForLabel(dataCaptureViewId: dataCaptureViewId,
+                                                    anchorString: anchor,
+                                                    trackingId: trackingId,
+                                                    fieldName: fieldName)
             setAnchorForFieldOfLabel(anchorForFieldOfLabel: anchorForLabelField, result: result)
 
         case "setOffsetForCapturedLabel":
             guard let offsetJson: String = method.argument(key: "offset"),
-                let trackingId: Int = method.argument(key: "identifier"),
-                let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId")
-            else {
+                  let trackingId: Int = method.argument(key: "identifier"),
+                  let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId") else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
-            let offsetForLabel = OffsetForLabel(
-                dataCaptureViewId: dataCaptureViewId,
-                offsetJson: offsetJson,
-                trackingId: trackingId
-            )
+            let offsetForLabel = OffsetForLabel(dataCaptureViewId: dataCaptureViewId,
+                                               offsetJson: offsetJson,
+                                               trackingId: trackingId)
             setOffsetForCapturedLabel(offsetForLabel: offsetForLabel, result: result)
 
         case "setOffsetForCapturedLabelField":
             guard let offsetJson: String = method.argument(key: "offset"),
-                let identifier: String = method.argument(key: "identifier"),
-                let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId")
-            else {
+                  let identifier: String = method.argument(key: "identifier"),
+                  let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId") else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
             let components = identifier.components(separatedBy: String(FrameworksLabelCaptureSession.separator))
             let trackingId = Int(components[0]) ?? 0
             let fieldName = components.count > 1 ? components[1] : ""
-            let offsetForLabelField = OffsetForLabel(
-                dataCaptureViewId: dataCaptureViewId,
-                offsetJson: offsetJson,
-                trackingId: trackingId,
-                fieldName: fieldName
-            )
+            let offsetForLabelField = OffsetForLabel(dataCaptureViewId: dataCaptureViewId,
+                                                    offsetJson: offsetJson,
+                                                    trackingId: trackingId,
+                                                    fieldName: fieldName)
             setOffsetForFieldOfLabel(offsetForFieldOfLabel: offsetForLabelField, result: result)
 
         case "clearCapturedLabelViews":
@@ -738,8 +656,7 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
         case "updateLabelCaptureAdvancedOverlay":
             guard let overlayJson: String = method.argument(key: "advancedOverlayJson"),
-                let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId")
-            else {
+                  let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId") else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
@@ -767,15 +684,14 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
         case "updateLabelCaptureBasicOverlay":
             guard let overlayJson: String = method.argument(key: "basicOverlayJson"),
-                let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId")
-            else {
+                  let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId") else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
             updateBasicOverlay(dataCaptureViewId, overlayJson: overlayJson, result: result)
 
         case "setLabelCaptureBasicOverlayBrushForFieldOfLabel":
-            guard let jsonPayload: String = method.argument(key: "brushDataJson") else {
+            guard let jsonPayload: String = method.arguments() else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
@@ -783,20 +699,18 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             let brushJson: String = json.string(forKey: "brush")
             let identifier: String = json.string(forKey: "identifier")
             let dataCaptureViewId: Int = json.integer(forKey: "dataCaptureViewId")
-
+    
             let components = identifier.components(separatedBy: String(FrameworksLabelCaptureSession.separator))
             let trackingId = Int(components[0]) ?? 0
             let fieldName = components.count > 1 ? components[1] : ""
-            let brushForField = BrushForLabelField(
-                dataCaptureViewId: dataCaptureViewId,
-                brushJson: brushJson,
-                labelTrackingId: trackingId,
-                fieldName: fieldName
-            )
+            let brushForField = BrushForLabelField(dataCaptureViewId: dataCaptureViewId,
+                                                  brushJson: brushJson,
+                                                  labelTrackingId: trackingId,
+                                                  fieldName: fieldName)
             setBrushForFieldOfLabel(brushForFieldOfLabel: brushForField, result: result)
 
         case "setLabelCaptureBasicOverlayBrushForLabel":
-            guard let jsonPayload: String = method.argument(key: "brushDataJson") else {
+            guard let jsonPayload: String = method.arguments() else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
@@ -804,12 +718,10 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
             let brushJson: String = json.string(forKey: "brush")
             let trackingId: Int = json.integer(forKey: "identifier")
             let dataCaptureViewId: Int = json.integer(forKey: "dataCaptureViewId")
-
-            let brushForLabel = BrushForLabelField(
-                dataCaptureViewId: dataCaptureViewId,
-                brushJson: brushJson,
-                labelTrackingId: trackingId
-            )
+            
+            let brushForLabel = BrushForLabelField(dataCaptureViewId: dataCaptureViewId,
+                                                  brushJson: brushJson,
+                                                  labelTrackingId: trackingId)
             setBrushForLabel(brushForLabel: brushForLabel, result: result)
 
         case "registerListenerForValidationFlowEvents":
@@ -824,24 +736,11 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
         case "updateLabelCaptureValidationFlowOverlay":
             guard let overlayJson: String = method.argument(key: "overlayJson"),
-                let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId")
-            else {
+                  let dataCaptureViewId: Int = method.argument(key: "dataCaptureViewId") else {
                 result.reject(error: ScanditFrameworksCoreError.nilArgument)
                 return true
             }
             updateValidationFlowOverlay(dataCaptureViewId, overlayJson: overlayJson, result: result)
-
-        case "updateLabelCaptureFeedback":
-            guard let modeId: Int = method.argument(key: "modeId") else {
-                result.reject(error: ScanditFrameworksCoreError.nilArgument)
-                return true
-            }
-            guard let feedbackJson: String = method.argument(key: "feedbackJson") else {
-                result.reject(error: ScanditFrameworksCoreError.nilArgument)
-                return true
-            }
-
-            updateFeedback(modeId: modeId, feedbackJson: feedbackJson, result: result)
 
         default:
             return false
@@ -852,36 +751,38 @@ open class LabelModule: BasicFrameworkModule<FrameworksLabelCaptureMode> {
 
     // Helper methods to reduce duplication
     private func getDataCaptureView(for viewId: Int) -> FrameworksDataCaptureView? {
-        captureViewHandler.getView(viewId)
+        return captureViewHandler.getView(viewId)
     }
 }
 
 extension LabelModule: DeserializationLifeCycleObserver {
     public func dataCaptureContext(addMode modeJson: String) throws {
+        let json = JSONValue(string: modeJson)
+
+        if json.string(forKey: "type") != "labelCapture" {
+            return
+        }
+        let modeId = json.integer(forKey: "modeId", default: -1)
+
+        if modeId == -1 {
+            throw ScanditFrameworksCoreError.nilArgument
+        }
+
         guard let dcContext = captureContext.context else {
             return
         }
 
         do {
-            let creationParams = try LabelCaptureModeCreationData.fromJson(modeJson)
+            listener.reset()
 
-            if creationParams.modeType != "labelCapture" {
-                return
-            }
+            let mode = try deserializer.mode(fromJSONString: modeJson, with: dcContext)
+            captureContext.addMode(mode: mode)
+            mode.addListener(listener)
+            listener.setEnabled(enabled: json.bool(forKey: "hasListeners", default: false))
 
-            let mode = try FrameworksLabelCaptureMode.create(
-                emitter: emitter,
-                captureContext: DefaultFrameworksCaptureContext.shared,
-                creationData: creationParams,
-                dataCaptureContext: dcContext,
-                sessionHolder: sessionHolder
-            )
-
-            addModeToCache(modeId: creationParams.modeId, mode: mode)
-            for action in getPostModeCreationActions(creationParams.modeId) {
-                action()
-            }
-            for action in getPostModeCreationActionsByParent(creationParams.parentId ?? -1) {
+            addModeToCache(modeId: modeId, mode: mode)
+            mode.isEnabled = json.bool(forKey: "enabled")
+            for action in getPostModeCreationActions(modeId) {
                 action()
             }
         } catch {
@@ -901,15 +802,20 @@ extension LabelModule: DeserializationLifeCycleObserver {
         guard let mode = getModeFromCache(modeId) else {
             return
         }
-        mode.dispose()
+        listener.reset()
+        captureContext.removeMode(mode: mode)
+        mode.removeListener(listener)
+
         _ = removeModeFromCache(modeId)
         clearPostModeCreationActions(modeId)
     }
 
     public func dataCaptureContextAllModeRemoved() {
         for mode in getAllModesInCache() {
-            mode.dispose()
+            mode.removeListener(listener)
         }
+        listener.reset()
+
         removeAllModesFromCache()
         clearPostModeCreationActions(nil)
     }
@@ -920,74 +826,33 @@ extension LabelModule: DeserializationLifeCycleObserver {
 
     public func dataCaptureView(addOverlay overlayJson: String, to view: FrameworksDataCaptureView) throws {
         let creationData = LabelCaptureOverlayCreationData.fromJson(overlayJson)
-        if creationData.overlayType == nil {
+        guard let mode = getTopmostMode() else {
             return
         }
 
-        let parentId = view.parentId ?? -1
-
-        var mode: FrameworksLabelCaptureMode?
-
-        if parentId != -1 {
-            mode = getModeFromCacheByParent(parentId) as? FrameworksLabelCaptureMode
-        } else {
-            mode = getModeFromCache(creationData.modeId)
-        }
-
-        guard let labelCapture = mode else {
-            if parentId != -1 {
-                addPostModeCreationActionByParent(parentId) {
-                    try? self.dataCaptureView(addOverlay: overlayJson, to: view)
-                }
-            } else {
-                addPostModeCreationAction(creationData.modeId) {
-                    try? self.dataCaptureView(addOverlay: overlayJson, to: view)
-                }
-            }
-            return
-        }
-
-        dispatchMain { [weak self] in
-            guard let self = self else {
-                return
-            }
-
+        try dispatchMainSync {
             let overlay: DataCaptureOverlay
 
-            do {
-                switch creationData.overlayType {
-                case .basic:
-                    overlay = try self.deserializer.basicOverlay(
-                        fromJSONString: overlayJson,
-                        withMode: labelCapture.mode
-                    )
+            switch creationData.overlayType {
+            case .basic:
+                overlay = try deserializer.basicOverlay(fromJSONString: overlayJson, withMode: mode)
 
-                    if creationData.hasListener {
-                        (overlay as? LabelCaptureBasicOverlay)?.delegate = basicOverlayListener
-                    }
-                case .advanced:
-                    overlay = try self.deserializer.advancedOverlay(
-                        fromJSONString: overlayJson,
-                        withMode: labelCapture.mode
-                    )
-
-                    if creationData.hasListener {
-                        (overlay as? LabelCaptureAdvancedOverlay)?.delegate = advancedOverlayListener
-                    }
-                case .validationFlow:
-                    overlay = try self.deserializer.validationFlowOverlay(
-                        fromJSONString: overlayJson,
-                        withMode: labelCapture.mode
-                    )
-
-                    if creationData.hasListener {
-                        (overlay as? LabelCaptureValidationFlowOverlay)?.delegate = validationFlowListener
-                    }
-                default:
-                    return
+                if creationData.hasListener {
+                    (overlay as? LabelCaptureBasicOverlay)?.delegate = basicOverlayListener
                 }
-            } catch {
-                Log.error(error)
+            case .advanced:
+                overlay = try deserializer.advancedOverlay(fromJSONString: overlayJson, withMode: mode)
+
+                if creationData.hasListener {
+                    (overlay as? LabelCaptureAdvancedOverlay)?.delegate = advancedOverlayListener
+                }
+            case .validationFlow:
+                overlay = try deserializer.validationFlowOverlay(fromJSONString: overlayJson, withMode: mode)
+
+                if creationData.hasListener {
+                    (overlay as? LabelCaptureValidationFlowOverlay)?.delegate = validationFlowListener
+                }
+            default:
                 return
             }
 
