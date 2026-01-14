@@ -6,7 +6,6 @@
 
 import ScanditFrameworksCore
 import ScanditLabelCapture
-
 #if !COCOAPODS
 import ScanditFrameworksLabelObjC
 #endif
@@ -23,6 +22,10 @@ public struct LabelCaptureValidationFlowOverlayDefaults: DefaultsEncodable {
     public static var shared: LabelCaptureValidationFlowOverlayDefaults = {
         .init(settings: FrameworksLabelCaptureValidationFlowSettingsDefaults())
     }()
+
+    private init(settings: FrameworksLabelCaptureValidationFlowSettingsDefaults) {
+        self.settings = settings
+    }
 }
 
 struct FrameworksLabelCaptureValidationFlowSettingsDefaults: DefaultsEncodable {
@@ -33,7 +36,7 @@ struct FrameworksLabelCaptureValidationFlowSettingsDefaults: DefaultsEncodable {
             "validationHintText": LabelCaptureValidationFlowSettingsDefaults.defaultValidationHintText,
             "validationErrorText": LabelCaptureValidationFlowSettingsDefaults.defaultValidationErrorText,
             "requiredFieldErrorText": LabelCaptureValidationFlowSettingsDefaults.defaultRequiredFieldErrorText,
-            "manualInputButtonText": LabelCaptureValidationFlowSettingsDefaults.defaultManualInputButtonText,
+            "manualInputButtonText": LabelCaptureValidationFlowSettingsDefaults.defaultManualInputButtonText
         ]
     }
 }

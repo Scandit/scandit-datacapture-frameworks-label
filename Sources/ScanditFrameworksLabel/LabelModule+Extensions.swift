@@ -11,7 +11,7 @@ extension LabelModule {
     func handleError(_ error: Error, result: FrameworksResult) {
         result.reject(error: error)
     }
-
+    
     // MARK: - Label and Field Retrieval
 
     func getLabel(byId id: Int, result: FrameworksResult) -> CapturedLabel? {
@@ -39,7 +39,7 @@ extension LabelModule {
     // MARK: - View Creation
 
     func createView(from data: Data?, identifier: String) -> UIView? {
-        data.flatMap { data in
+        return data.flatMap { data in
             advancedOverlayViewCache?.getOrCreateView(
                 fromBase64EncodedData: data,
                 withIdentifier: identifier
