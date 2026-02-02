@@ -4,6 +4,7 @@
  * Copyright (C) 2025- Scandit AG. All rights reserved.
  */
 
+import ScanditCaptureCore
 import ScanditFrameworksCore
 
 public struct LabelCaptureModeCreationData {
@@ -40,8 +41,8 @@ public struct LabelCaptureModeCreationData {
         let json = JSONValue(string: modeJson)
 
         let modeType = json.string(forKey: typeKey, default: "")
-        
-        if (modeType != "labelCapture") {
+
+        if modeType != "labelCapture" {
             return LabelCaptureModeCreationData(
                 modeJson: modeJson,
                 modeId: -1,
@@ -51,7 +52,7 @@ public struct LabelCaptureModeCreationData {
                 modeType: modeType
             )
         }
-        
+
         let hasListener = json.bool(forKey: hasListenersKey, default: false)
         let isEnabled = json.bool(forKey: modeEnabledKey, default: false)
         let modeId = json.integer(forKey: modeIdKey, default: -1)
