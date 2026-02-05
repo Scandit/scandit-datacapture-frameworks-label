@@ -7,7 +7,7 @@
 import ScanditFrameworksCore
 import ScanditLabelCapture
 
-extension LabelCaptureModule {
+extension LabelModule {
     func handleError(_ error: Error, result: FrameworksResult) {
         result.reject(error: error)
     }
@@ -56,34 +56,5 @@ extension LabelCaptureModule {
             return nil
         }
         return brush
-    }
-
-    // MARK: - Tap Gesture Recognizers
-
-    func addTapGestureRecognizer(to view: UIView, for label: CapturedLabel) {
-        let tapRecognizer = TapGestureRecognizerWithClosure { [weak self] in
-            guard let self = self else { return }
-            self.didTapViewForFieldOfLabelEvent.emit(
-                on: self.emitter,
-                payload: ["label": label.jsonString]
-            )
-        }
-        view.isUserInteractionEnabled = true
-        view.addGestureRecognizer(tapRecognizer)
-    }
-
-    func addTapGestureRecognizer(to view: UIView, for labelField: LabelField, of label: CapturedLabel) {
-        let tapRecognizer = TapGestureRecognizerWithClosure { [weak self] in
-            guard let self = self else { return }
-            self.didTapViewForFieldOfLabelEvent.emit(
-                on: self.emitter,
-                payload: [
-                    "label": label.jsonString,
-                    "field": labelField.jsonString,
-                ]
-            )
-        }
-        view.isUserInteractionEnabled = true
-        view.addGestureRecognizer(tapRecognizer)
     }
 }

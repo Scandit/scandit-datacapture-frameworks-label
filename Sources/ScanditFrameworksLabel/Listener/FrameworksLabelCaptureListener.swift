@@ -19,8 +19,6 @@ public enum FrameworksLabelCaptureEvent: String, CaseIterable {
     case offsetForLabel = "LabelCaptureAdvancedOverlayListener.offsetForLabel"
     case offsetForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.offsetForFieldOfLabel"
     case didTapOnViewForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.didTapOnViewForFieldOfLabel"
-    case didRecognize = "LabelCaptureAdaptiveRecognitionListener.recognized"
-    case didFail = "LabelCaptureAdaptiveRecognitionListener.failure"
 }
 
 extension Event {
@@ -61,7 +59,7 @@ open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
             return
         }
 
-        if !emitter.hasModeSpecificListenersForEvent(modeId: modeId, for: Event(.didUpdateSession)) {
+        if !emitter.hasListener(for: .didUpdateSession) {
             return
         }
 

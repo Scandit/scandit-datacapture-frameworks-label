@@ -9,7 +9,6 @@ import ScanditLabelCapture
 
 public enum FrameworksLabelCaptureValidationFlowEvents: String, CaseIterable {
     case didCaptureLabelWithFields = "LabelCaptureValidationFlowListener.didCaptureLabelWithFields"
-    case didSubmitManualInputForField = "LabelCaptureValidationFlowListener.didSubmitManualInputForField"
 }
 
 extension Event {
@@ -32,7 +31,6 @@ open class FrameworksLabelCaptureValidationFlowListener: NSObject, LabelCaptureV
     }
 
     private let didCaptureLabelWithEvent = Event(.didCaptureLabelWithFields)
-    private let didSubmitManualInputForFieldEvent = Event(.didSubmitManualInputForField)
 
     public func labelCaptureValidationFlowOverlay(
         _ overlay: LabelCaptureValidationFlowOverlay,
@@ -40,24 +38,6 @@ open class FrameworksLabelCaptureValidationFlowListener: NSObject, LabelCaptureV
     ) {
         if emitter.hasListener(for: .didCaptureLabelWithFields) {
             didCaptureLabelWithEvent.emit(on: emitter, payload: ["fields": fields.map { $0.jsonString }])
-        }
-    }
-
-    public func labelCaptureValidationFlowOverlay(
-        _ overlay: LabelCaptureValidationFlowOverlay,
-        didSubmitManualInputFor field: LabelField,
-        replacingValue oldValue: String?,
-        withValue newValue: String
-    ) {
-        if emitter.hasListener(for: .didSubmitManualInputForField) {
-            didSubmitManualInputForFieldEvent.emit(
-                on: emitter,
-                payload: [
-                    "fields": [field.jsonString],
-                    "oldValue": oldValue as Any,
-                    "newValue": newValue,
-                ]
-            )
         }
     }
 }
