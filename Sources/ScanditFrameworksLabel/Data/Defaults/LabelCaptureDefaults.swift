@@ -10,20 +10,25 @@ import ScanditLabelCapture
 public struct LabelCaptureDefaults: DefaultsEncodable {
     private let cameraSettings: CameraSettingsDefaults
     private let basicOverlay: LabelCaptureBasicOverlayDefaults
+    private let validationFlowOverlay: LabelCaptureValidationFlowOverlayDefaults
+    private let feedback: LabelCaptureFeedback
 
     public func toEncodable() -> [String: Any?] {
         [
             "RecommendedCameraSettings": cameraSettings.toEncodable(),
-            "LabelCaptureBasicOverlay": basicOverlay.toEncodable()
+            "LabelCaptureBasicOverlay": basicOverlay.toEncodable(),
+            "LabelCaptureValidationFlowOverlay": validationFlowOverlay.toEncodable(),
+            "feedback": feedback.jsonString,
         ]
     }
 
     public static var shared: LabelCaptureDefaults = {
-        .init(cameraSettings: 
+        .init(
+            cameraSettings:
                 CameraSettingsDefaults(
                     cameraSettings: LabelCapture.recommendedCameraSettings
                 ),
-              basicOverlay: LabelCaptureBasicOverlayDefaults(
+            basicOverlay: LabelCaptureBasicOverlayDefaults(
                 predictedFieldBrush:
                     EncodableBrush(
                         brush: LabelCaptureBasicOverlay.defaultPredictedFieldBrush
@@ -36,7 +41,9 @@ public struct LabelCaptureDefaults: DefaultsEncodable {
                     EncodableBrush(
                         brush: LabelCaptureBasicOverlay.defaultLabelBrush
                     )
-              )
+            ),
+            validationFlowOverlay: LabelCaptureValidationFlowOverlayDefaults.shared,
+            feedback: LabelCaptureFeedback()
         )
     }()
 }
@@ -50,7 +57,16 @@ struct LabelCaptureBasicOverlayDefaults: DefaultsEncodable {
         [
             "DefaultPredictedFieldBrush": predictedFieldBrush.toEncodable(),
             "DefaultCapturedFieldBrush": capturedFieldBrush.toEncodable(),
-            "DefaultLabelBrush": labelBrush.toEncodable()
+            "DefaultLabelBrush": labelBrush.toEncodable(),
+        ]
+    }
+}
+
+struct LabelCaptureFeedbackDefaults: DefaultsEncodable {
+
+    func toEncodable() -> [String: Any?] {
+        [
+            "success": LabelCaptureFeedback.default.jsonString
         ]
     }
 }
