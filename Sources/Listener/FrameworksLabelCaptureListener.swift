@@ -19,8 +19,6 @@ public enum FrameworksLabelCaptureEvent: String, CaseIterable {
     case offsetForLabel = "LabelCaptureAdvancedOverlayListener.offsetForLabel"
     case offsetForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.offsetForFieldOfLabel"
     case didTapOnViewForFieldOfLabel = "LabelCaptureAdvancedOverlayListener.didTapOnViewForFieldOfLabel"
-    case didRecognize = "LabelCaptureAdaptiveRecognitionListener.recognized"
-    case didFail = "LabelCaptureAdaptiveRecognitionListener.failure"
 }
 
 extension Event {
@@ -38,42 +36,30 @@ extension Emitter {
 open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
     private let emitter: Emitter
     private let sessionHolder: SessionHolder<FrameworksLabelCaptureSession>
-    private let isEnabled: AtomicValue<Bool> = AtomicValue(false)
-    private let modeId: Int
 
-    public init(emitter: Emitter, modeId: Int, sessionHolder: SessionHolder<FrameworksLabelCaptureSession>) {
+    public init(emitter: Emitter, sessionHolder: SessionHolder<FrameworksLabelCaptureSession>) {
         self.emitter = emitter
-        self.modeId = modeId
         self.sessionHolder = sessionHolder
     }
 
+    private var isEnabled = AtomicBool()
+
     private let didUpdateEvent = EventWithResult<Bool>(event: Event(.didUpdateSession))
 
-    public func labelCapture(
-        _ labelCapture: LabelCapture,
-        didUpdate session: LabelCaptureSession,
-        frameData: FrameData
-    ) {
-
-        sessionHolder.value = FrameworksLabelCaptureSession.create(from: session)
-
-        if !isEnabled.value {
-            return
-        }
-
-        if !emitter.hasModeSpecificListenersForEvent(modeId: modeId, for: Event(.didUpdateSession)) {
-            return
-        }
-
+    public func labelCapture(_ labelCapture: LabelCapture,
+                             didUpdate session: LabelCaptureSession,
+                             frameData: FrameData) {
+        guard isEnabled.value, emitter.hasListener(for: .didUpdateSession) else { return }
+        
         let frameId = LastFrameData.shared.addToCache(frameData: frameData)
         defer { LastFrameData.shared.removeFromCache(frameId: frameId) }
-
-        let payload: [String: Any?] = [
+        
+        sessionHolder.value = FrameworksLabelCaptureSession.create(from: session)
+        let payload: [String: Any?] =  [
             "session": session.jsonString,
-            "frameId": frameId,
-            "modeId": modeId,
+            "frameId": frameId
         ]
-
+        
         let result = didUpdateEvent.emit(on: emitter, payload: payload) ?? true
         labelCapture.isEnabled = result
     }
@@ -82,12 +68,17 @@ open class FrameworksLabelCaptureListener: NSObject, LabelCaptureListener {
         didUpdateEvent.unlock(value: enabled)
     }
 
-    public func setEnabled(enabled: Bool) {
-        isEnabled.value = enabled
+    public func enable() {
+        if isEnabled.value {
+            return
+        }
+        isEnabled.value = true
     }
 
-    public func reset() {
-        sessionHolder.value = nil
-        didUpdateEvent.reset()
+    public func disable() {
+        if isEnabled.value {
+            isEnabled.value = false
+            didUpdateEvent.reset()
+        }
     }
 }
