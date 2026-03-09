@@ -4,6 +4,7 @@
  * Copyright (C) 2025- Scandit AG. All rights reserved.
  */
 
+import ScanditCaptureCore
 import ScanditFrameworksCore
 
 public enum LabelCaptureOverlayType {
