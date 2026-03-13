@@ -34,6 +34,13 @@ struct FrameworksLabelCaptureValidationFlowSettingsDefaults: DefaultsEncodable {
             "validationErrorText": LabelCaptureValidationFlowSettingsDefaults.defaultValidationErrorText,
             "requiredFieldErrorText": LabelCaptureValidationFlowSettingsDefaults.defaultRequiredFieldErrorText,
             "manualInputButtonText": LabelCaptureValidationFlowSettingsDefaults.defaultManualInputButtonText,
+            "validationFinishButtonText": LabelCaptureValidationFlowSettingsDefaults.defaultValidationFinishButtonText,
+            "validationRestartButtonText": LabelCaptureValidationFlowSettingsDefaults
+                .defaultValidationRestartButtonText,
+            "validationPauseButtonText": LabelCaptureValidationFlowSettingsDefaults.defaultValidationPauseButtonText,
+            "validationAdaptiveScanningText": LabelCaptureValidationFlowSettingsDefaults
+                .defaultValidationAdaptiveScanningText,
+            "validationScanningText": LabelCaptureValidationFlowSettingsDefaults.defaultValidationScanningText,
         ]
     }
 }
