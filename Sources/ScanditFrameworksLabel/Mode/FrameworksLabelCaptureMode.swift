@@ -4,30 +4,30 @@
  * Copyright (C) 2025- Scandit AG. All rights reserved.
  */
 
-import ScanditLabelCapture
 import ScanditFrameworksCore
+import ScanditLabelCapture
 
 public class FrameworksLabelCaptureMode: FrameworksBaseMode {
     private let listener: FrameworksLabelCaptureListener
     private let captureContext: DefaultFrameworksCaptureContext
     private let deserializer: LabelCaptureDeserializer
 
-    private var _modeId: Int = -1
-    private var _parentId: Int? = nil
+    private var internalModeId: Int = -1
+    private var internalParentId: Int? = nil
 
     public var modeId: Int {
-        return _modeId
+        internalModeId
     }
 
     public var parentId: Int? {
-        return _parentId
+        internalParentId
     }
 
     public private(set) var mode: LabelCapture!
 
     public var isEnabled: Bool {
         get {
-            return mode.isEnabled
+            mode.isEnabled
         }
         set {
             mode.isEnabled = newValue
@@ -54,8 +54,8 @@ public class FrameworksLabelCaptureMode: FrameworksBaseMode {
         listener.setEnabled(enabled: creationData.hasListener)
 
         mode.isEnabled = creationData.isEnabled
-        _modeId = creationData.modeId
-        _parentId = creationData.parentId
+        internalModeId = creationData.modeId
+        internalParentId = creationData.parentId
     }
 
     public func dispose() {
@@ -84,7 +84,7 @@ public class FrameworksLabelCaptureMode: FrameworksBaseMode {
     public func updateModeFromJson(modeJson: String) throws {
         try deserializer.updateMode(mode, fromJSONString: modeJson)
     }
-    
+
     public func updateLabelCaptureFeedback(feedbackJson: String) throws {
         mode.feedback = try LabelCaptureFeedback(fromJSONString: feedbackJson)
     }
@@ -103,7 +103,7 @@ public class FrameworksLabelCaptureMode: FrameworksBaseMode {
             modeId: creationData.modeId,
             sessionHolder: sessionHolder
         )
-        
+
         let mode = FrameworksLabelCaptureMode(
             listener: listener,
             captureContext: captureContext

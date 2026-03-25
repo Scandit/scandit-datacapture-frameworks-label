@@ -18,11 +18,11 @@ public class FrameworksLabelCaptureSession {
     }
 
     public func getLabel(byId id: Int) -> CapturedLabel? {
-        return capturedLabels.first { $0.trackingId == id }
+        capturedLabels.first { $0.trackingId == id }
     }
 
     public func getField(byKey fieldKey: String) -> LabelField? {
-        return capturedLabelFields[fieldKey]
+        capturedLabelFields[fieldKey]
     }
 
     public func getLabel(byFieldKey fieldKey: String) -> CapturedLabel? {
@@ -32,14 +32,14 @@ public class FrameworksLabelCaptureSession {
     }
 
     public func getLabelFieldKey(for labelField: LabelField) -> String? {
-        return capturedLabelFields.first { entry in
+        capturedLabelFields.first { entry in
             let parts = entry.key.split(separator: FrameworksLabelCaptureSession.separator)
             return parts.count > 1 && String(parts[1]) == labelField.name
         }?.key
     }
 
     public static func getFieldKey(trackingId: Int, fieldName: String) -> String {
-        return "\(trackingId)\(separator)\(fieldName)"
+        "\(trackingId)\(separator)\(fieldName)"
     }
 
     public static func create(from session: LabelCaptureSession) -> FrameworksLabelCaptureSession {
