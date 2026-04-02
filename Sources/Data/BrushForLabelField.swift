@@ -7,13 +7,11 @@
 import ScanditFrameworksCore
 
 public struct BrushForLabelField {
-    let dataCaptureViewId: Int
     let brushJson: String?
     let labelTrackingId: Int
     let fieldName: String?
 
-    public init(dataCaptureViewId: Int, brushJson: String?, labelTrackingId: Int, fieldName: String? = nil) {
-        self.dataCaptureViewId = dataCaptureViewId
+    public init(brushJson: String?, labelTrackingId: Int, fieldName: String? = nil) {
         self.brushJson = brushJson
         self.labelTrackingId = labelTrackingId
         self.fieldName = fieldName
