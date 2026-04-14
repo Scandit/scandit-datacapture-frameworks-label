@@ -7,11 +7,13 @@
 import ScanditCaptureCore
 
 public struct AnchorForLabel {
+    let dataCaptureViewId: Int
     let anchor: Anchor
     let trackingId: Int
     let fieldName: String?
 
-    public init(anchorString: String, trackingId: Int, fieldName: String? = nil) {
+    public init(dataCaptureViewId: Int, anchorString: String, trackingId: Int, fieldName: String? = nil) {
+        self.dataCaptureViewId = dataCaptureViewId
         var anchor = Anchor.center
         SDCAnchorFromJSONString(anchorString, &anchor)
         self.anchor = anchor
