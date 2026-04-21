@@ -32,11 +32,8 @@ open class FrameworksLabelCaptureValidationFlowListener: NSObject, LabelCaptureV
 
     private let didCaptureLabelWithEvent = Event(.didCaptureLabelWithFields)
 
-    public func labelCaptureValidationFlowOverlay(
-        _ overlay: LabelCaptureValidationFlowOverlay,
-        didCaptureLabelWith fields: [LabelField]
-    ) {
-        if emitter.hasListener(for: .didCaptureLabelWithFields) {
+    public func labelCaptureValidationFlowOverlay(_ overlay: LabelCaptureValidationFlowOverlay, didCaptureLabelWith fields: [LabelField]) {
+        if (emitter.hasListener(for: .didCaptureLabelWithFields)) {
             didCaptureLabelWithEvent.emit(on: emitter, payload: ["fields": fields.map { $0.jsonString }])
         }
     }
