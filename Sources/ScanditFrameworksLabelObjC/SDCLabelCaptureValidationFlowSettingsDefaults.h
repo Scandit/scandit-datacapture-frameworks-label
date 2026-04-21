@@ -23,7 +23,7 @@ NS_SWIFT_NAME(LabelCaptureValidationFlowSettingsDefaults)
 @property (class, nonatomic, nullable, readonly) NSString *defaultManualInputButtonText;
 //clang-format on
 
-- (instancetype)new NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
 - (instancetype)init NS_UNAVAILABLE;
 @end
 
