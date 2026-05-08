@@ -21,84 +21,72 @@ open class FrameworksLabelCaptureAdvancedOverlayListener: NSObject, LabelCapture
     private var anchorForFieldOfLabelEvent = Event(.anchorForFieldOfLabel)
     private var offsetForFieldOfLabelEvent = Event(.offsetForFieldOfLabel)
 
-    public func labelCaptureAdvancedOverlay(
-        _ overlay: LabelCaptureAdvancedOverlay,
-        viewFor capturedLabel: CapturedLabel
-    ) -> UIView? {
+    public func labelCaptureAdvancedOverlay(_ overlay: LabelCaptureAdvancedOverlay,
+                                            viewFor capturedLabel: CapturedLabel) -> UIView? {
         if emitter.hasListener(for: .viewForLabel) {
             viewForLabelEvent.emit(on: emitter, payload: ["label": capturedLabel.jsonString])
         }
         return nil
     }
-
-    public func labelCaptureAdvancedOverlay(
-        _ overlay: LabelCaptureAdvancedOverlay,
-        anchorFor capturedLabel: CapturedLabel
-    ) -> Anchor {
+    
+    public func labelCaptureAdvancedOverlay(_ overlay: LabelCaptureAdvancedOverlay, 
+                                            anchorFor capturedLabel: CapturedLabel) -> Anchor {
         if emitter.hasListener(for: .anchorForLabel) {
             anchorForLabelEvent.emit(on: emitter, payload: ["label": capturedLabel.jsonString])
         }
         return .center
     }
-
-    public func labelCaptureAdvancedOverlay(
-        _ overlay: LabelCaptureAdvancedOverlay,
-        offsetFor capturedLabel: CapturedLabel
-    ) -> PointWithUnit {
+    
+    public func labelCaptureAdvancedOverlay(_ overlay: LabelCaptureAdvancedOverlay, 
+                                            offsetFor capturedLabel: CapturedLabel) -> PointWithUnit {
         if emitter.hasListener(for: .offsetForLabel) {
             offsetForLabelEvent.emit(on: emitter, payload: ["label": capturedLabel.jsonString])
         }
         return .zero
     }
 
-    public func labelCaptureAdvancedOverlay(
-        _ overlay: LabelCaptureAdvancedOverlay,
-        viewFor capturedField: LabelField,
-        of capturedLabel: CapturedLabel
-    ) -> UIView? {
+    public func labelCaptureAdvancedOverlay(_ overlay: LabelCaptureAdvancedOverlay, 
+                                            viewFor capturedField: LabelField,
+                                            of capturedLabel: CapturedLabel) -> UIView? {
         if emitter.hasListener(for: .viewForFieldOfLabel) {
             let payload = [
                 "field": capturedField.jsonString,
                 "identifier": FrameworksLabelCaptureSession.getFieldKey(
                     trackingId: capturedLabel.trackingId,
                     fieldName: capturedField.name
-                ),
+                )
             ]
             viewForFieldOfLabelEvent.emit(on: emitter, payload: payload)
         }
         return nil
     }
 
-    public func labelCaptureAdvancedOverlay(
-        _ overlay: LabelCaptureAdvancedOverlay,
-        anchorFor capturedField: LabelField,
-        of capturedLabel: CapturedLabel
-    ) -> Anchor {
+    public func labelCaptureAdvancedOverlay(_ overlay: LabelCaptureAdvancedOverlay, 
+                                            anchorFor capturedField: LabelField,
+                                            of capturedLabel: CapturedLabel) -> Anchor {
         if emitter.hasListener(for: .anchorForFieldOfLabel) {
             let payload = [
                 "field": capturedField.jsonString,
                 "identifier": FrameworksLabelCaptureSession.getFieldKey(
                     trackingId: capturedLabel.trackingId,
                     fieldName: capturedField.name
-                ),
+                )
             ]
             anchorForFieldOfLabelEvent.emit(on: emitter, payload: payload)
         }
         return .center
     }
 
-    public func labelCaptureAdvancedOverlay(
-        _ overlay: LabelCaptureAdvancedOverlay,
-        offsetFor capturedField: LabelField,
-        of capturedLabel: CapturedLabel
-    ) -> PointWithUnit {
+    public func labelCaptureAdvancedOverlay(_ overlay: LabelCaptureAdvancedOverlay, 
+                                            offsetFor capturedField: LabelField,
+                                            of capturedLabel: CapturedLabel) -> PointWithUnit {
         if emitter.hasListener(for: .offsetForFieldOfLabel) {
             let payload = [
                 "field": capturedField.jsonString,
                 "identifier": FrameworksLabelCaptureSession.getFieldKey(
                     trackingId: capturedLabel.trackingId,
                     fieldName: capturedField.name
-                ),
+                )
             ]
             offsetForFieldOfLabelEvent.emit(on: emitter, payload: payload)
         }
