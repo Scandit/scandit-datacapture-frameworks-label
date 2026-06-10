@@ -5,7 +5,6 @@
  */
 
 import ScanditCaptureCore
-import ScanditCaptureCoreDeserializer
 
 public struct AnchorForLabel {
     let dataCaptureViewId: Int
