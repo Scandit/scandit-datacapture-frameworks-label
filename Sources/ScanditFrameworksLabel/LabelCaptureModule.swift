@@ -91,6 +91,13 @@ open class LabelCaptureModule: BasicFrameworkModule<FrameworksLabelCaptureMode> 
             let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType()
         {
             overlay.delegate = basicOverlayListener
+        } else {
+            // Overlay not resolvable for this view yet; the framework layer re-registers
+            // once the view is available. Surface it rather than failing silently. [SDC-30872]
+            Log.info(
+                "addLabelCaptureBasicOverlayListener: no LabelCaptureBasicOverlay "
+                    + "for dataCaptureViewId \(dataCaptureViewId); will be re-registered against a valid view."
+            )
         }
         result.successAndKeepCallback(result: nil)
     }
@@ -109,6 +116,13 @@ open class LabelCaptureModule: BasicFrameworkModule<FrameworksLabelCaptureMode> 
             let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
         {
             overlay.delegate = advancedOverlayListener
+        } else {
+            // Overlay not resolvable for this view yet; the framework layer re-registers
+            // once the view is available. Surface it rather than failing silently. [SDC-30872]
+            Log.info(
+                "addLabelCaptureAdvancedOverlayListener: no LabelCaptureAdvancedOverlay "
+                    + "for dataCaptureViewId \(dataCaptureViewId); will be re-registered against a valid view."
+            )
         }
         result.successAndKeepCallback(result: nil)
     }
@@ -127,6 +141,16 @@ open class LabelCaptureModule: BasicFrameworkModule<FrameworksLabelCaptureMode> 
             let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType()
         {
             overlay.delegate = validationFlowListener
+        } else {
+            // The overlay could not be resolved for this view (e.g. the view is not yet
+            // created, or the caller passed an invalid id). Surface it instead of failing
+            // silently: until this succeeds, validation-flow events are not delivered.
+            // The framework layer re-registers when the view becomes available. [SDC-30872]
+            Log.info(
+                "registerListenerForValidationFlowEvents: no LabelCaptureValidationFlowOverlay "
+                    + "for dataCaptureViewId \(dataCaptureViewId); validation-flow events will not be "
+                    + "delivered until it is re-registered against a valid view."
+            )
         }
         result.successAndKeepCallback(result: nil)
     }
@@ -145,6 +169,14 @@ open class LabelCaptureModule: BasicFrameworkModule<FrameworksLabelCaptureMode> 
             let overlay: LabelCaptureAdaptiveRecognitionOverlay = dcView.findFirstOfType()
         {
             overlay.delegate = adaptiveRecognitionListener
+        } else {
+            // Overlay not resolvable for this view yet; the framework layer re-registers
+            // once the view is available. Surface it rather than failing silently. [SDC-30872]
+            Log.info(
+                "registerListenerForAdaptiveRecognitionOverlayEvents: no "
+                    + "LabelCaptureAdaptiveRecognitionOverlay for dataCaptureViewId \(dataCaptureViewId); "
+                    + "will be re-registered against a valid view."
+            )
         }
         result.successAndKeepCallback(result: nil)
     }
