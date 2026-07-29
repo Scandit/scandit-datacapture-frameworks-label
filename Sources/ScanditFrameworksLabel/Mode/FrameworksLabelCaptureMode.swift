@@ -6,7 +6,6 @@
 
 import ScanditFrameworksCore
 import ScanditLabelCapture
-import ScanditLabelCaptureDeserializer
 
 public class FrameworksLabelCaptureMode: FrameworksBaseMode {
     private let listener: FrameworksLabelCaptureListener
