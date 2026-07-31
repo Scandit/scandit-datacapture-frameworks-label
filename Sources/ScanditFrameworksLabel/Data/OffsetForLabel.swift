@@ -5,6 +5,7 @@
  */
 
 import ScanditCaptureCore
+import ScanditCaptureCoreDeserializer
 
 public struct OffsetForLabel {
     let dataCaptureViewId: Int
