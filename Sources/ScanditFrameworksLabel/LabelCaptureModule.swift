@@ -858,10 +858,21 @@ open class LabelCaptureModule: BasicFrameworkModule<FrameworksLabelCaptureMode> 
 
             do {
                 // in case we don't have a mode yet, it will return success and cache the new
-                // feedback to be applied after the creation of the view.
-                if let mode = self.getModeFromCache(modeId) {
-                    try mode.updateLabelCaptureFeedback(feedbackJson: feedbackJson)
+                // feedback to be applied after the creation of the mode. The mode is created
+                // asynchronously after this call, so dropping the update here would leave the
+                // default feedback (sound + vibration on) installed (SDC-30550).
+                guard let mode = self.getModeFromCache(modeId) else {
+                    self.addPostModeCreationAction(modeId) {
+                        self.updateLabelCaptureFeedback(
+                            modeId: modeId,
+                            feedbackJson: feedbackJson,
+                            result: NoopFrameworksResult()
+                        )
+                    }
+                    result.success()
+                    return
                 }
+                try mode.updateLabelCaptureFeedback(feedbackJson: feedbackJson)
                 result.success()
             } catch let error {
                 result.reject(error: error)
