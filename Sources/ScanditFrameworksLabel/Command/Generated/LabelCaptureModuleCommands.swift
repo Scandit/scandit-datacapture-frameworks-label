@@ -104,10 +104,14 @@ public class UpdateLabelCaptureModeCommand: LabelCaptureModuleCommand {
     private let modeJson: String
     public init(module: LabelCaptureModule, _ method: FrameworksMethodCall) {
         self.module = module
-        self.modeJson = method.argument(key: "modeJson") ?? String()
+        self.modeJson = method.argument(key: "modeJson") ?? ""
     }
 
     public func execute(result: FrameworksResult) {
+        guard !modeJson.isEmpty else {
+            result.reject(code: "MISSING_PARAMETER", message: "Required parameter 'modeJson' is missing", details: nil)
+            return
+        }
         module.updateLabelCaptureMode(
             modeJson: modeJson,
             result: result
@@ -122,10 +126,18 @@ public class UpdateLabelCaptureSettingsCommand: LabelCaptureModuleCommand {
     public init(module: LabelCaptureModule, _ method: FrameworksMethodCall) {
         self.module = module
         self.modeId = method.argument(key: "modeId") ?? Int()
-        self.settingsJson = method.argument(key: "settingsJson") ?? String()
+        self.settingsJson = method.argument(key: "settingsJson") ?? ""
     }
 
     public func execute(result: FrameworksResult) {
+        guard !settingsJson.isEmpty else {
+            result.reject(
+                code: "MISSING_PARAMETER",
+                message: "Required parameter 'settingsJson' is missing",
+                details: nil
+            )
+            return
+        }
         module.updateLabelCaptureSettings(
             modeId: modeId,
             settingsJson: settingsJson,
