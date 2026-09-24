@@ -21,14 +21,9 @@ NS_SWIFT_NAME(LabelCaptureValidationFlowSettingsDefaults)
 @property (class, nonatomic, nullable, readonly) NSString *defaultValidationErrorText;
 @property (class, nonatomic, nullable, readonly) NSString *defaultRequiredFieldErrorText;
 @property (class, nonatomic, nullable, readonly) NSString *defaultManualInputButtonText;
-@property (class, nonatomic, nullable, readonly) NSString *defaultValidationFinishButtonText;
-@property (class, nonatomic, nullable, readonly) NSString *defaultValidationRestartButtonText;
-@property (class, nonatomic, nullable, readonly) NSString *defaultValidationPauseButtonText;
-@property (class, nonatomic, nullable, readonly) NSString *defaultValidationAdaptiveScanningText;
-@property (class, nonatomic, nullable, readonly) NSString *defaultValidationScanningText;
 //clang-format on
 
-+ (instancetype)new NS_UNAVAILABLE;
+- (instancetype)new NS_UNAVAILABLE;
 - (instancetype)init NS_UNAVAILABLE;
 @end
 
