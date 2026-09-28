@@ -4,12 +4,14 @@
  * Copyright (C) 2025- Scandit AG. All rights reserved.
  */
 
+import ScanditCaptureCore
 import ScanditFrameworksCore
 
 public enum LabelCaptureOverlayType {
     case basic
     case advanced
     case validationFlow
+    case receiptScanning
 }
 
 public struct LabelCaptureOverlayCreationData {
@@ -36,6 +38,8 @@ public struct LabelCaptureOverlayCreationData {
                 return .basic
             case "validationFlow":
                 return .validationFlow
+            case "receiptScanning":
+                return .receiptScanning
             default:
                 return nil
             }

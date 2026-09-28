@@ -5,18 +5,19 @@
  */
 
 import ScanditCaptureCore
+import ScanditCaptureCoreDeserializer
 
-public struct OffsetForLabel {
+public struct AnchorForLabel {
     let dataCaptureViewId: Int
-    let offset: PointWithUnit
+    let anchor: Anchor
     let trackingId: Int
     let fieldName: String?
 
-    public init(dataCaptureViewId: Int, offsetJson: String, trackingId: Int, fieldName: String? = nil) {
+    public init(dataCaptureViewId: Int, anchorString: String, trackingId: Int, fieldName: String? = nil) {
         self.dataCaptureViewId = dataCaptureViewId
-        var offset = PointWithUnit.zero
-        SDCPointWithUnitFromJSONString(offsetJson, &offset)
-        self.offset = offset
+        var anchor = Anchor.center
+        SDCAnchorFromJSONString(anchorString, &anchor)
+        self.anchor = anchor
         self.trackingId = trackingId
         self.fieldName = fieldName
     }

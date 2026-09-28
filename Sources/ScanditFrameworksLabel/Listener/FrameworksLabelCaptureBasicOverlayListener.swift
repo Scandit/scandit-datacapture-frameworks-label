@@ -18,27 +18,33 @@ open class FrameworksLabelCaptureBasicOverlayListener: NSObject, LabelCaptureBas
         self.emitter = emitter
     }
 
-    public func labelCaptureBasicOverlay(_ overlay: LabelCaptureBasicOverlay,
-                                         brushFor field: LabelField,
-                                         of label: CapturedLabel) -> Brush? {
+    public func labelCaptureBasicOverlay(
+        _ overlay: LabelCaptureBasicOverlay,
+        brushFor field: LabelField,
+        of label: CapturedLabel
+    ) -> Brush? {
         guard emitter.hasListener(for: .brushForFieldOfLabel) else { return nil }
         let payload = [
             "field": field.jsonString,
-            "label": label.jsonString
+            "label": label.jsonString,
         ]
         brushForFieldOfLabelEvent.emit(on: emitter, payload: payload)
         return overlay.capturedFieldBrush
     }
-    
-    public func labelCaptureBasicOverlay(_ overlay: LabelCaptureBasicOverlay, 
-                                         brushFor label: CapturedLabel) -> Brush? {
+
+    public func labelCaptureBasicOverlay(
+        _ overlay: LabelCaptureBasicOverlay,
+        brushFor label: CapturedLabel
+    ) -> Brush? {
         guard emitter.hasListener(for: .brushForLabel) else { return nil }
         brushForLabelEvent.emit(on: emitter, payload: ["label": label.jsonString])
         return overlay.labelBrush
     }
-    
-    public func labelCaptureBasicOverlay(_ overlay: LabelCaptureBasicOverlay, 
-                                         didTap label: CapturedLabel) {
+
+    public func labelCaptureBasicOverlay(
+        _ overlay: LabelCaptureBasicOverlay,
+        didTap label: CapturedLabel
+    ) {
         guard emitter.hasListener(for: .didTapLabel) else { return }
         didTapLabelEvent.emit(on: emitter, payload: ["label": label.jsonString])
     }
