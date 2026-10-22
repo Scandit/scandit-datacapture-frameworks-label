@@ -40,7 +40,11 @@ open class FrameworksLabelCaptureValidationFlowListener: NSObject, LabelCaptureV
         didCaptureLabelWith fields: [LabelField]
     ) {
         if emitter.hasListener(for: .didCaptureLabelWithFields) {
-            didCaptureLabelWithEvent.emit(on: emitter, payload: ["fields": fields.map { $0.jsonString }])
+            let payload = SchemaTypes.LabelCaptureValidationFlowListenerDidCaptureLabelWithFields(
+                fields: fields.map { $0.jsonString },
+                event: FrameworksLabelCaptureValidationFlowEvents.didCaptureLabelWithFields.rawValue
+            ).toDictionary()
+            didCaptureLabelWithEvent.emit(on: emitter, payload: payload)
         }
     }
 
@@ -51,14 +55,13 @@ open class FrameworksLabelCaptureValidationFlowListener: NSObject, LabelCaptureV
         withValue newValue: String
     ) {
         if emitter.hasListener(for: .didSubmitManualInputForField) {
-            didSubmitManualInputForFieldEvent.emit(
-                on: emitter,
-                payload: [
-                    "fields": [field.jsonString],
-                    "oldValue": oldValue as Any,
-                    "newValue": newValue,
-                ]
-            )
+            let payload = SchemaTypes.LabelCaptureValidationFlowListenerDidSubmitManualInputForField(
+                fields: [field.jsonString],
+                oldValue: oldValue,
+                newValue: newValue,
+                event: FrameworksLabelCaptureValidationFlowEvents.didSubmitManualInputForField.rawValue
+            ).toDictionary()
+            didSubmitManualInputForFieldEvent.emit(on: emitter, payload: payload)
         }
     }
 
@@ -81,14 +84,17 @@ open class FrameworksLabelCaptureValidationFlowListener: NSObject, LabelCaptureV
                 }
             }
 
+            let payload = SchemaTypes.LabelCaptureValidationFlowListenerDidUpdateValidationFlowResult(
+                fields: fields.map { $0.jsonString },
+                type: type.jsonString,
+                asyncId: asyncId,
+                frameId: frameId,
+                event: FrameworksLabelCaptureValidationFlowEvents.didUpdateValidationFlowResult.rawValue
+            ).toDictionary()
+
             self.didUpdateValidationFlowResultEvent.emit(
                 on: self.emitter,
-                payload: [
-                    "fields": fields.map { $0.jsonString },
-                    "type": type.jsonString,
-                    "asyncId": asyncId,
-                    "frameId": frameId,
-                ]
+                payload: payload
             )
         }
     }

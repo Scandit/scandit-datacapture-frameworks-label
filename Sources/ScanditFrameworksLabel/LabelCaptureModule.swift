@@ -34,6 +34,18 @@ open class LabelCaptureModule: BasicFrameworkModule<FrameworksLabelCaptureMode> 
 
     internal let didTapViewForFieldOfLabelEvent = Event(.didTapOnViewForFieldOfLabel)
 
+    // View ids whose overlay listener was requested while the overlay didn't exist yet;
+    // honored by dataCaptureView(addOverlay:to:) when the overlay is (re)created.
+    // Every register/unregister and the dataCaptureView(addOverlay:to:) read run inside
+    // dispatchMain, so those accesses share one thread. didStop() clears them directly,
+    // matching BarcodeBatchModule; it is not itself dispatchMain-wrapped.
+    // Not `private` so LabelCaptureModulePendingOverlayListenerTests can assert on them directly
+    // (SDC-32821) - mirrors the precedent in FrameworksBarcodeCountViewListenerTests.
+    var pendingBasicOverlayListenerViewIds = Set<Int>()
+    var pendingAdvancedOverlayListenerViewIds = Set<Int>()
+    var pendingValidationFlowOverlayListenerViewIds = Set<Int>()
+    var pendingAdaptiveRecognitionOverlayListenerViewIds = Set<Int>()
+
     public init(
         emitter: Emitter,
         deserializer: LabelCaptureDeserializer = LabelCaptureDeserializer(),
@@ -49,20 +61,39 @@ open class LabelCaptureModule: BasicFrameworkModule<FrameworksLabelCaptureMode> 
         self.adaptiveRecognitionListener = FrameworksLabelCaptureAdaptiveRecognitionListener(emitter: emitter)
     }
 
+    private lazy var listenerAttachments: [ListenerAttachment] = [
+        ModuleListenerAttachment.forMode(
+            ["LabelCaptureListener.didUpdateSession"],
+            attach: { [weak self] in
+                self?.addLabelCaptureListener(modeId: $0, result: NoopFrameworksResult())
+            },
+            detach: { [weak self] in
+                self?.removeLabelCaptureListener(modeId: $0, result: NoopFrameworksResult())
+            }
+        )
+    ]
+
     public override func didStart() {
+        listenerAttachments.forEach { ListenerRegistry.shared.register(attachment: $0) }
         Deserializers.Factory.add(deserializer)
         DeserializationLifeCycleDispatcher.shared.attach(observer: self)
         advancedOverlayViewCache = DefaultAdvancedOverlayViewCache()
     }
 
     public override func didStop() {
+        listenerAttachments.forEach { ListenerRegistry.shared.unregister(attachment: $0) }
         Deserializers.Factory.remove(deserializer)
         DeserializationLifeCycleDispatcher.shared.detach(observer: self)
         advancedOverlayViewCache = nil
+        pendingBasicOverlayListenerViewIds.removeAll()
+        pendingAdvancedOverlayListenerViewIds.removeAll()
+        pendingValidationFlowOverlayListenerViewIds.removeAll()
+        pendingAdaptiveRecognitionOverlayListenerViewIds.removeAll()
     }
 
-    public override func getDefaults() -> [String: Any?] {
-        LabelCaptureDefaults.shared.toEncodable()
+    /// Only the defaults that cannot be resolved statically by a framework plugin.
+    public func getDynamicDefaults() -> [String: Any?] {
+        LabelCaptureDefaults.shared.toDynamicEncodable()
     }
 
     public func addLabelCaptureListener(modeId: Int, result: FrameworksResult) {
@@ -76,10 +107,14 @@ open class LabelCaptureModule: BasicFrameworkModule<FrameworksLabelCaptureMode> 
             return
         }
         mode.addListener()
+        rememberListenerRegistration(modeId: modeId) { [weak self] in
+            self?.addLabelCaptureListener(modeId: modeId, result: NoopFrameworksResult())
+        }
         result.successAndKeepCallback(result: nil)
     }
 
     public func removeLabelCaptureListener(modeId: Int, result: FrameworksResult) {
+        forgetListenerRegistration(modeId: modeId)
         if let mode = getModeFromCache(modeId) {
             mode.removeListener()
         }
@@ -87,110 +122,102 @@ open class LabelCaptureModule: BasicFrameworkModule<FrameworksLabelCaptureMode> 
     }
 
     public func addLabelCaptureBasicOverlayListener(dataCaptureViewId: Int, result: FrameworksResult) {
-        if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType()
-        {
-            overlay.delegate = basicOverlayListener
-        } else {
-            // Overlay not resolvable for this view yet; the framework layer re-registers
-            // once the view is available. Surface it rather than failing silently. [SDC-30872]
-            Log.info(
-                "addLabelCaptureBasicOverlayListener: no LabelCaptureBasicOverlay "
-                    + "for dataCaptureViewId \(dataCaptureViewId); will be re-registered against a valid view."
-            )
+        dispatchMain {
+            self.pendingBasicOverlayListenerViewIds.insert(dataCaptureViewId)
+            if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
+                let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType()
+            {
+                overlay.delegate = self.basicOverlayListener
+            }
+            result.successAndKeepCallback(result: nil)
         }
-        result.successAndKeepCallback(result: nil)
     }
 
     public func removeLabelCaptureBasicOverlayListener(dataCaptureViewId: Int, result: FrameworksResult) {
-        if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType()
-        {
-            overlay.delegate = nil
+        dispatchMain {
+            self.pendingBasicOverlayListenerViewIds.remove(dataCaptureViewId)
+            if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
+                let overlay: LabelCaptureBasicOverlay = dcView.findFirstOfType()
+            {
+                overlay.delegate = nil
+            }
+            result.success()
         }
-        result.success()
     }
 
     public func addLabelCaptureAdvancedOverlayListener(dataCaptureViewId: Int, result: FrameworksResult) {
-        if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
-            overlay.delegate = advancedOverlayListener
-        } else {
-            // Overlay not resolvable for this view yet; the framework layer re-registers
-            // once the view is available. Surface it rather than failing silently. [SDC-30872]
-            Log.info(
-                "addLabelCaptureAdvancedOverlayListener: no LabelCaptureAdvancedOverlay "
-                    + "for dataCaptureViewId \(dataCaptureViewId); will be re-registered against a valid view."
-            )
+        dispatchMain {
+            self.pendingAdvancedOverlayListenerViewIds.insert(dataCaptureViewId)
+            if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
+                let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
+            {
+                overlay.delegate = self.advancedOverlayListener
+            }
+            result.successAndKeepCallback(result: nil)
         }
-        result.successAndKeepCallback(result: nil)
     }
 
     public func removeLabelCaptureAdvancedOverlayListener(dataCaptureViewId: Int, result: FrameworksResult) {
-        if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
-        {
-            overlay.delegate = nil
+        dispatchMain {
+            self.pendingAdvancedOverlayListenerViewIds.remove(dataCaptureViewId)
+            if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
+                let overlay: LabelCaptureAdvancedOverlay = dcView.findFirstOfType()
+            {
+                overlay.delegate = nil
+            }
+            result.success()
         }
-        result.success()
     }
 
     public func registerListenerForValidationFlowEvents(dataCaptureViewId: Int, result: FrameworksResult) {
-        if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType()
-        {
-            overlay.delegate = validationFlowListener
-        } else {
-            // The overlay could not be resolved for this view (e.g. the view is not yet
-            // created, or the caller passed an invalid id). Surface it instead of failing
-            // silently: until this succeeds, validation-flow events are not delivered.
-            // The framework layer re-registers when the view becomes available. [SDC-30872]
-            Log.info(
-                "registerListenerForValidationFlowEvents: no LabelCaptureValidationFlowOverlay "
-                    + "for dataCaptureViewId \(dataCaptureViewId); validation-flow events will not be "
-                    + "delivered until it is re-registered against a valid view."
-            )
+        dispatchMain {
+            self.pendingValidationFlowOverlayListenerViewIds.insert(dataCaptureViewId)
+            if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
+                let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType()
+            {
+                overlay.delegate = self.validationFlowListener
+            }
+            result.successAndKeepCallback(result: nil)
         }
-        result.successAndKeepCallback(result: nil)
     }
 
     public func unregisterListenerForValidationFlowEvents(dataCaptureViewId: Int, result: FrameworksResult) {
-        if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType()
-        {
-            overlay.delegate = nil
+        dispatchMain {
+            self.pendingValidationFlowOverlayListenerViewIds.remove(dataCaptureViewId)
+            if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
+                let overlay: LabelCaptureValidationFlowOverlay = dcView.findFirstOfType()
+            {
+                overlay.delegate = nil
+            }
+            result.success()
         }
-        result.success()
     }
 
     public func registerListenerForAdaptiveRecognitionOverlayEvents(dataCaptureViewId: Int, result: FrameworksResult) {
-        if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureAdaptiveRecognitionOverlay = dcView.findFirstOfType()
-        {
-            overlay.delegate = adaptiveRecognitionListener
-        } else {
-            // Overlay not resolvable for this view yet; the framework layer re-registers
-            // once the view is available. Surface it rather than failing silently. [SDC-30872]
-            Log.info(
-                "registerListenerForAdaptiveRecognitionOverlayEvents: no "
-                    + "LabelCaptureAdaptiveRecognitionOverlay for dataCaptureViewId \(dataCaptureViewId); "
-                    + "will be re-registered against a valid view."
-            )
+        dispatchMain {
+            self.pendingAdaptiveRecognitionOverlayListenerViewIds.insert(dataCaptureViewId)
+            if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
+                let overlay: LabelCaptureAdaptiveRecognitionOverlay = dcView.findFirstOfType()
+            {
+                overlay.delegate = self.adaptiveRecognitionListener
+            }
+            result.successAndKeepCallback(result: nil)
         }
-        result.successAndKeepCallback(result: nil)
     }
 
     public func unregisterListenerForAdaptiveRecognitionOverlayEvents(
         dataCaptureViewId: Int,
         result: FrameworksResult
     ) {
-        if let dcView = getDataCaptureView(for: dataCaptureViewId),
-            let overlay: LabelCaptureAdaptiveRecognitionOverlay = dcView.findFirstOfType()
-        {
-            overlay.delegate = nil
+        dispatchMain {
+            self.pendingAdaptiveRecognitionOverlayListenerViewIds.remove(dataCaptureViewId)
+            if let dcView = self.getDataCaptureView(for: dataCaptureViewId),
+                let overlay: LabelCaptureAdaptiveRecognitionOverlay = dcView.findFirstOfType()
+            {
+                overlay.delegate = nil
+            }
+            result.success()
         }
-        result.success()
     }
 
     public func finishLabelCaptureListenerDidUpdateSession(modeId: Int, isEnabled: Bool, result: FrameworksResult) {
@@ -858,10 +885,21 @@ open class LabelCaptureModule: BasicFrameworkModule<FrameworksLabelCaptureMode> 
 
             do {
                 // in case we don't have a mode yet, it will return success and cache the new
-                // feedback to be applied after the creation of the view.
-                if let mode = self.getModeFromCache(modeId) {
-                    try mode.updateLabelCaptureFeedback(feedbackJson: feedbackJson)
+                // feedback to be applied after the creation of the mode. The mode is created
+                // asynchronously after this call, so dropping the update here would leave the
+                // default feedback (sound + vibration on) installed (SDC-30550).
+                guard let mode = self.getModeFromCache(modeId) else {
+                    self.addPostModeCreationAction(modeId) {
+                        self.updateLabelCaptureFeedback(
+                            modeId: modeId,
+                            feedbackJson: feedbackJson,
+                            result: NoopFrameworksResult()
+                        )
+                    }
+                    result.success()
+                    return
                 }
+                try mode.updateLabelCaptureFeedback(feedbackJson: feedbackJson)
                 result.success()
             } catch let error {
                 result.reject(error: error)
@@ -985,7 +1023,7 @@ extension LabelCaptureModule: DeserializationLifeCycleObserver {
                         withMode: labelCapture.mode
                     )
 
-                    if creationData.hasListener {
+                    if creationData.hasListener || self.pendingBasicOverlayListenerViewIds.contains(view.viewId) {
                         (overlay as? LabelCaptureBasicOverlay)?.delegate = basicOverlayListener
                     }
                 case .advanced:
@@ -994,7 +1032,7 @@ extension LabelCaptureModule: DeserializationLifeCycleObserver {
                         withMode: labelCapture.mode
                     )
 
-                    if creationData.hasListener {
+                    if creationData.hasListener || self.pendingAdvancedOverlayListenerViewIds.contains(view.viewId) {
                         (overlay as? LabelCaptureAdvancedOverlay)?.delegate = advancedOverlayListener
                     }
                 case .validationFlow:
@@ -1003,7 +1041,9 @@ extension LabelCaptureModule: DeserializationLifeCycleObserver {
                         withMode: labelCapture.mode
                     )
 
-                    if creationData.hasListener {
+                    if creationData.hasListener
+                        || self.pendingValidationFlowOverlayListenerViewIds.contains(view.viewId)
+                    {
                         (overlay as? LabelCaptureValidationFlowOverlay)?.delegate = validationFlowListener
                     }
                 case .receiptScanning:
@@ -1012,7 +1052,9 @@ extension LabelCaptureModule: DeserializationLifeCycleObserver {
                         withMode: labelCapture.mode
                     )
 
-                    if creationData.hasListener {
+                    if creationData.hasListener
+                        || self.pendingAdaptiveRecognitionOverlayListenerViewIds.contains(view.viewId)
+                    {
                         let arOverlay = overlay as? LabelCaptureAdaptiveRecognitionOverlay
                         arOverlay?.delegate = adaptiveRecognitionListener
                     }
