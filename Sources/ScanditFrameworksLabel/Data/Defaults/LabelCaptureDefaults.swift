@@ -7,24 +7,19 @@
 import ScanditFrameworksCore
 import ScanditLabelCapture
 
-public struct LabelCaptureDefaults {
+public struct LabelCaptureDefaults: DefaultsEncodable {
     private let cameraSettings: CameraSettingsDefaults
+    private let basicOverlay: LabelCaptureBasicOverlayDefaults
     private let validationFlowOverlay: LabelCaptureValidationFlowOverlayDefaults
+    private let feedback: LabelCaptureFeedback
 
-    /// The residual set of label defaults that a framework plugin cannot resolve statically: the
-    /// recommended camera settings (derived differently per platform wrapper) and the
-    /// locale-dependent validation-flow texts. Every other label default ships as a generated
-    /// static file.
-    public func toDynamicEncodable() -> [String: Any?] {
+    public func toEncodable() -> [String: Any?] {
         [
-            Keys.recommendedCameraSettings: cameraSettings.toEncodable(),
-            Keys.validationFlowOverlay: validationFlowOverlay.toEncodable(),
+            "RecommendedCameraSettings": cameraSettings.toEncodable(),
+            "LabelCaptureBasicOverlay": basicOverlay.toEncodable(),
+            "LabelCaptureValidationFlowOverlay": validationFlowOverlay.toEncodable(),
+            "feedback": feedback.jsonString,
         ]
-    }
-
-    private enum Keys {
-        static let recommendedCameraSettings = "RecommendedCameraSettings"
-        static let validationFlowOverlay = "LabelCaptureValidationFlowOverlay"
     }
 
     public static var shared: LabelCaptureDefaults = {
@@ -33,7 +28,45 @@ public struct LabelCaptureDefaults {
                 CameraSettingsDefaults(
                     cameraSettings: LabelCapture.recommendedCameraSettings
                 ),
-            validationFlowOverlay: LabelCaptureValidationFlowOverlayDefaults.shared
+            basicOverlay: LabelCaptureBasicOverlayDefaults(
+                predictedFieldBrush:
+                    EncodableBrush(
+                        brush: LabelCaptureBasicOverlay.defaultPredictedFieldBrush
+                    ),
+                capturedFieldBrush:
+                    EncodableBrush(
+                        brush: LabelCaptureBasicOverlay.defaultCapturedFieldBrush
+                    ),
+                labelBrush:
+                    EncodableBrush(
+                        brush: LabelCaptureBasicOverlay.defaultLabelBrush
+                    )
+            ),
+            validationFlowOverlay: LabelCaptureValidationFlowOverlayDefaults.shared,
+            feedback: LabelCaptureFeedback()
         )
     }()
+}
+
+struct LabelCaptureBasicOverlayDefaults: DefaultsEncodable {
+    let predictedFieldBrush: EncodableBrush
+    let capturedFieldBrush: EncodableBrush
+    let labelBrush: EncodableBrush
+
+    func toEncodable() -> [String: Any?] {
+        [
+            "DefaultPredictedFieldBrush": predictedFieldBrush.toEncodable(),
+            "DefaultCapturedFieldBrush": capturedFieldBrush.toEncodable(),
+            "DefaultLabelBrush": labelBrush.toEncodable(),
+        ]
+    }
+}
+
+struct LabelCaptureFeedbackDefaults: DefaultsEncodable {
+
+    func toEncodable() -> [String: Any?] {
+        [
+            "success": LabelCaptureFeedback.default.jsonString
+        ]
+    }
 }

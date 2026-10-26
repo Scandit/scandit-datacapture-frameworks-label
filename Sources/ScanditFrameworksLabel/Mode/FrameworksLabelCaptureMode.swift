@@ -52,7 +52,7 @@ public class FrameworksLabelCaptureMode: FrameworksBaseMode {
         mode = try deserializer.mode(fromJSONString: creationData.modeJson, with: dataCaptureContext)
         captureContext.addMode(mode: mode)
         mode.addListener(listener)
-        listener.setEnabled(enabled: false)
+        listener.setEnabled(enabled: creationData.hasListener)
 
         mode.isEnabled = creationData.isEnabled
         internalModeId = creationData.modeId
