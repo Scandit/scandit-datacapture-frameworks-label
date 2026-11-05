@@ -21,6 +21,7 @@ public class LabelCaptureModuleCommandFactory {
     /// - Returns: The corresponding command, or nil if method is not recognized
     public static func create(module: LabelCaptureModule, _ method: FrameworksMethodCall) -> LabelCaptureModuleCommand?
     {
+        _ = LogMetadata.registered
         switch method.method {
         case "finishLabelCaptureListenerDidUpdateSession":
             return FinishLabelCaptureListenerDidUpdateSessionCommand(module: module, method)

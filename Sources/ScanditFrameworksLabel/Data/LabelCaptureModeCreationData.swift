@@ -11,12 +11,10 @@ public struct LabelCaptureModeCreationData {
     public let modeJson: String
     public let modeId: Int
     public let parentId: Int?
-    public let hasListener: Bool
     public let isEnabled: Bool
     public let modeType: String
 
     private static let modeEnabledKey = "enabled"
-    private static let hasListenersKey = "hasListeners"
     private static let modeIdKey = "modeId"
     private static let parentIdKey = "parentId"
     private static let typeKey = "type"
@@ -25,14 +23,12 @@ public struct LabelCaptureModeCreationData {
         modeJson: String,
         modeId: Int,
         parentId: Int?,
-        hasListener: Bool,
         isEnabled: Bool,
         modeType: String
     ) {
         self.modeJson = modeJson
         self.modeId = modeId
         self.parentId = parentId
-        self.hasListener = hasListener
         self.isEnabled = isEnabled
         self.modeType = modeType
     }
@@ -47,13 +43,11 @@ public struct LabelCaptureModeCreationData {
                 modeJson: modeJson,
                 modeId: -1,
                 parentId: nil,
-                hasListener: false,
                 isEnabled: false,
                 modeType: modeType
             )
         }
 
-        let hasListener = json.bool(forKey: hasListenersKey, default: false)
         let isEnabled = json.bool(forKey: modeEnabledKey, default: false)
         let modeId = json.integer(forKey: modeIdKey, default: -1)
         let parentId = json.integer(forKey: parentIdKey, default: -1)
@@ -66,7 +60,6 @@ public struct LabelCaptureModeCreationData {
             modeJson: modeJson,
             modeId: modeId,
             parentId: parentId,
-            hasListener: hasListener,
             isEnabled: isEnabled,
             modeType: modeType
         )

@@ -24,10 +24,11 @@ open class FrameworksLabelCaptureBasicOverlayListener: NSObject, LabelCaptureBas
         of label: CapturedLabel
     ) -> Brush? {
         guard emitter.hasListener(for: .brushForFieldOfLabel) else { return nil }
-        let payload = [
-            "field": field.jsonString,
-            "label": label.jsonString,
-        ]
+        let payload = SchemaTypes.LabelCaptureBasicOverlayListenerBrushForFieldOfLabel(
+            field: field.jsonString,
+            label: label.jsonString,
+            event: FrameworksLabelCaptureEvent.brushForFieldOfLabel.rawValue
+        ).toDictionary()
         brushForFieldOfLabelEvent.emit(on: emitter, payload: payload)
         return overlay.capturedFieldBrush
     }
@@ -37,7 +38,11 @@ open class FrameworksLabelCaptureBasicOverlayListener: NSObject, LabelCaptureBas
         brushFor label: CapturedLabel
     ) -> Brush? {
         guard emitter.hasListener(for: .brushForLabel) else { return nil }
-        brushForLabelEvent.emit(on: emitter, payload: ["label": label.jsonString])
+        let payload = SchemaTypes.LabelCaptureBasicOverlayListenerBrushForLabel(
+            label: label.jsonString,
+            event: FrameworksLabelCaptureEvent.brushForLabel.rawValue
+        ).toDictionary()
+        brushForLabelEvent.emit(on: emitter, payload: payload)
         return overlay.labelBrush
     }
 
@@ -46,6 +51,10 @@ open class FrameworksLabelCaptureBasicOverlayListener: NSObject, LabelCaptureBas
         didTap label: CapturedLabel
     ) {
         guard emitter.hasListener(for: .didTapLabel) else { return }
-        didTapLabelEvent.emit(on: emitter, payload: ["label": label.jsonString])
+        let payload = SchemaTypes.LabelCaptureBasicOverlayListenerDidTapLabel(
+            label: label.jsonString,
+            event: FrameworksLabelCaptureEvent.didTapLabel.rawValue
+        ).toDictionary()
+        didTapLabelEvent.emit(on: emitter, payload: payload)
     }
 }
