@@ -639,9 +639,7 @@ public class RegisterListenerForValidationFlowEventsCommand: LabelCaptureModuleC
     public func execute(result: FrameworksResult) {
         // Register/unregister event callbacks
         result.registerCallbackForEvents([
-            "LabelCaptureValidationFlowListener.didCaptureLabelWithFields",
-            "LabelCaptureValidationFlowListener.didSubmitManualInputForField",
-            "LabelCaptureValidationFlowListener.didUpdateValidationFlowResult",
+            "LabelCaptureValidationFlowListener.didCaptureLabelWithFields"
         ])
         module.registerListenerForValidationFlowEvents(
             dataCaptureViewId: dataCaptureViewId,
@@ -661,9 +659,7 @@ public class UnregisterListenerForValidationFlowEventsCommand: LabelCaptureModul
     public func execute(result: FrameworksResult) {
         // Register/unregister event callbacks
         result.unregisterCallbackForEvents([
-            "LabelCaptureValidationFlowListener.didCaptureLabelWithFields",
-            "LabelCaptureValidationFlowListener.didSubmitManualInputForField",
-            "LabelCaptureValidationFlowListener.didUpdateValidationFlowResult",
+            "LabelCaptureValidationFlowListener.didCaptureLabelWithFields"
         ])
         module.unregisterListenerForValidationFlowEvents(
             dataCaptureViewId: dataCaptureViewId,
